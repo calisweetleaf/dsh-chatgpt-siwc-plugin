@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sign in with ChatGPT plugin icon">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#ffffff" stroke="#111111" stroke-width="3"/>
+  <path d="M20 22h24M20 32h16M20 42h20" stroke="#111111" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="47" cy="45" r="7" fill="#16a34a"/>
+  <path d="M44.2 45l2 2 3.6-3.8" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

@@ -1,0 +1,1 @@
+{"compilerOptions":{"declaration":true,"emitDeclarationOnly":false,"noEmit":false,"outDir":"lib","rewriteRelativeImportExtensions":true,"rootDir":"src","sourceMap":true},"exclude":["src/client","lib","node_modules"],"extends":"./tsconfig.json","include":["src/**/*.ts"]}

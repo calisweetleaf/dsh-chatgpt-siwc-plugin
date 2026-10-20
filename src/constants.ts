@@ -1,0 +1,63 @@
+/**
+ * Wire constants for the official Sign in with ChatGPT (SIWC) open-source
+ * flow, as documented by OpenAI under developers.openai.com/siwc
+ * (token-sharing for open-source / locally hosted apps).
+ *
+ * This is NOT the Codex CLI login: no `app_EMoam…` client, no
+ * `chatgpt.com/backend-api/codex` endpoint, no `~/.codex/auth.json`.
+ * The app registers itself dynamically on first sign-in and afterwards
+ * calls the public API (`https://api.openai.com/v1`) with the issued
+ * OAuth access token.
+ *
+ * @module dsh-chatgpt-siwc/constants
+ */
+
+/** OIDC issuer for every token in this flow. */
+export const ISSUER = 'https://auth.openai.com'
+
+/** Discovery document that names the live endpoints (they can move). */
+export const DISCOVERY_URL = `${ISSUER}/.well-known/openid-configuration`
+
+/** Documented fallback endpoints, used when discovery cannot be read. */
+export const FALLBACK_ENDPOINTS = {
+  authorizationEndpoint: 'https://auth.openai.com/api/accounts/authorize',
+  tokenEndpoint: 'https://auth.openai.com/api/accounts/oauth/token',
+  jwksUri: 'https://auth.openai.com/.well-known/jwks.json',
+  revocationEndpoint: undefined as string | undefined,
+} as const
+
+/** Public API base the plan-usage token is scoped to. */
+export const API_BASE_URL = 'https://api.openai.com/v1'
+
+/** The `resource` parameter sent on authorize, exchange, and refresh. */
+export const RESOURCE = 'https://api.openai.com/v1'
+
+/** First-registration placeholder client id; never saved, never exchanged with. */
+export const DYNAMIC_CLIENT_ID = 'dynamic_agent_client'
+
+/** Identity scopes: who the user is. They grant no model usage by themselves. */
+export const IDENTITY_SCOPES = ['openid', 'profile', 'email'] as const
+
+/** Plan-usage scopes: the grant that lets requests draw on the user's ChatGPT plan. */
+export const PLAN_SCOPES = ['offline_access', 'resource.invoke', 'chatgpt.tokens.use.direct'] as const
+
+/** Every scope this plugin requests at sign-in. */
+export const ALL_SCOPES = [...IDENTITY_SCOPES, ...PLAN_SCOPES] as const
+
+/** The scope whose presence in a token response proves plan usage was granted. */
+export const PLAN_SCOPE = 'chatgpt.tokens.use.direct'
+
+/** Default `agent_name_hint` shown on the first-registration consent screen. */
+export const DEFAULT_AGENT_NAME_HINT = 'DeepSeek Harness'
+
+/** Loopback callback path; only the port may vary between attempts. */
+export const CALLBACK_PATH = '/auth/callback'
+
+/** Preferred loopback port (the port Codex popularized); any free port works. */
+export const PREFERRED_CALLBACK_PORT = 1455
+
+/** Where users review per-app caps and plan usage (linked as "Manage usage"). */
+export const MANAGE_USAGE_URL = 'https://chatgpt.com/settings/usage'
+
+/** Access tokens in this flow live one hour; refresh this early. */
+export const REFRESH_SKEW_MS = 5 * 60 * 1000
