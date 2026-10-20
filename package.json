@@ -4,16 +4,38 @@
   "description": "DeepSeek Harness plugin: use your ChatGPT Plus/Pro plan through the official Sign in with ChatGPT (SIWC) open-source flow — dynamic OAuth registration, public Responses API, no Codex backend, no sub2api pooling.",
   "type": "module",
   "license": "MIT",
-  "keywords": ["deepseek-harness", "dsh-plugin", "chatgpt", "sign-in-with-chatgpt", "siwc", "oauth", "openai"],
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "chatgpt",
+    "sign-in-with-chatgpt",
+    "siwc",
+    "oauth",
+    "openai"
+  ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "bin": { "dsh-chatgpt-siwc": "lib/bin.js" },
+  "bin": {
+    "dsh-chatgpt-siwc": "lib/bin.js"
+  },
   "exports": {
-    ".": { "types": "./lib/index.d.ts", "import": "./lib/index.js" },
-    "./client": { "default": "./lib/client.js" },
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
     "./package.json": "./package.json"
   },
-  "files": ["lib", "src", "cordis.patch.yml", "visual", "README.md", "LICENSE"],
+  "files": [
+    "lib",
+    "src",
+    "cordis.patch.yml",
+    "visual",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json && node node_modules/typescript/bin/tsc -p tsconfig.client.json && node --input-type=module -e \"import { chmodSync } from 'node:fs'; chmodSync('lib/bin.js', 0o755)\"",
     "prepack": "npm run build",
@@ -21,8 +43,15 @@
     "test": "npm run build && node node_modules/vitest/vitest.mjs run"
   },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
-    "client": { "platform": "web", "inject": ["@deepseek-ai/dsh-client-ui-settings-plugins"] }
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
+    }
   },
   "dependencies": {
     "@deepseek-ai/dsh-atomic-write": "0.1.6-alpha.1",
@@ -38,18 +67,22 @@
     "@deepseek-ai/dsh-settings": "0.1.6-alpha.1"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-commands": { "optional": true },
-    "@deepseek-ai/dsh-settings": { "optional": true }
+    "@deepseek-ai/dsh-commands": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-settings": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.4",
-    "@deepseek-ai/dsh-commands": "0.1.6-alpha.1",
     "@deepseek-ai/dsh-llm": "0.1.6-alpha.1",
-    "@deepseek-ai/dsh-settings": "0.1.6-alpha.1",
     "@types/node": "^22.10.0",
     "@types/react": "~18.3.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
   },
-  "engines": { "node": "^22.19.0 || >=24.0.0" }
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  }
 }

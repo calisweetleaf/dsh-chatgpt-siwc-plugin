@@ -1,176 +1,170 @@
-# Somnus Accelerate Constitution
-
-- The Accelerate program used a key repository from daeron which was a project testing 5.3-codex and grok-4.3 to work from one document and finish a full product language rewrite and reconstitution of Holy-C. Do not port or carry over any somnus-c framing as this will infect and confuse other codebases, so where needed rename if required, or follow the template. You always use the *filetree.md* between files so that you never lose track of the codebase and u maintain a coherent image.
-
-## Pre-Set-Working-Docs: Already Added These to move them out of the way
-
-- @./docs/CONTEXT.md
-
--
-
-# Imported from ./docs/CONTEXT.md
-
-# Somnus Accelerate — Operational Context
-
-## Current Architectural State
-
-Somnus Accelerate is structured into four distinct, non-competing layers:
-
-| Layer | Function | Core Files |
-| :--- | :--- | :--- |
-| **1. Theory / Extracted Model** | Causal analysis of why acceleration occurs | [`ACCELERATION_FIELD.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/ACCELERATION_FIELD.md), [`ACCELERATION_KERNEL.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/ACCELERATION_KERNEL.md), [`SEMANTIC_RELATIONS.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/SEMANTIC_RELATIONS.md), [`GENERATIVE_RECURRENCE.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/GENERATIVE_RECURRENCE.md), [`NEGATIVE_SPACE.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/NEGATIVE_SPACE.md) |
-| **2. Operational Method** | Portable machinery for placing a repo into an accelerating state | Root: `BOOTSTRAP.md`, `METHOD.md`, `MODEL_PROTOCOL.md`, `PACKET_MODEL.md`, `PACKET_TEMPLATE.md`, `RETROFIT.md`, `AUTHORITY_MODEL.md`, `AUTHORITY_MAP_TEMPLATE.md`, `QUALITY_TEST.md`, `GATE_TEMPLATE.sh`, `templates/`. Provenance: [`accelerate-original/`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/accelerate-original/) |
-| **3. Evidence & Archaeology** | Ground truth proving mechanisms from Somnus-C | [`EVIDENCE_LEDGER.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/EVIDENCE_LEDGER.md), [`case_studies/`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/case_studies/) |
-| **4. Host Realization** | Future execution runtime continuously maintaining environment state | Future `.js` host loop / Leto harness (Out of immediate scope) |
-
-## Active Strategy
-
-- **Consolidation Posture**: Original-first, additive merge. Phase 2 complete — operational method layer now at root.
-- **Provenance Protection**: Maintain `accelerate-original/` folder name during active merge. Do not rename to `v1`, `legacy`, or `old` to prevent model supersession bias.
-- **Control Plane**: The 4 core documents ([`AGENTS.MD`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/AGENTS.MD), [`docs/CONTEXT.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/docs/CONTEXT.md), [`docs/MEMORY.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/docs/MEMORY.md), [`docs/NOTEPAD.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/docs/NOTEPAD.md)) control agent operation.
-- **Next Phase**: Cross-layer integration — resolve duplicate `case_studies/` and `EVIDENCE_LEDGER.md`/`PACKET_MODEL.md`/`TASK.md` between root and `accelerate-original/`. Evaluate target-project retrofit test.
-
--
-
-# Imported from ./docs/MEMORY.md
-
-# Somnus Accelerate — Project Memory & Architectural Laws
-
-## Core Laws & Axioms
-
-### 1. Four-Layer Taxonomy
-
-Accelerate consists of four distinct, complementary layers. No layer supersedes another of a different layer type:
-
-- **Theory / Extracted Model** (Causal analysis of why acceleration occurs)
-- **Operational Method** (Portable machinery for putting a repo into an accelerating state)
-- **Evidence / Archaeology** (Observed proof points from Somnus-C)
-- **Host Realization** (Execution runtime projecting state continuously)
-
-### 2. Original-First Additive Consolidation
-
-- `accelerate-original/` contains the operational implementation lineage (bootstrap, model protocol, packet machinery, templates, retrofit procedure, quality tests, shell gates).
-- The root methodology extraction documents (`ACCELERATION_FIELD.md`, `ACCELERATION_KERNEL.md`, etc.) provide causal understanding.
-- Consolidation must preserve all operational machinery from `accelerate-original/` while integrating deeper causal principles. A component disappears only when its function is demonstrably absorbed by a superior mechanism.
-
-### 3. Somnus-C Contamination Boundary
-
-- Somnus-C is evidence and provenance, not a rigid template for unrelated target repositories.
-- Extract functions, relations, and environmental mechanisms; do not port project-specific authority assumptions or names into target repos.
-
-### 4. Progress Doctrine (Anti-Stagnation)
-
-- Accelerate exists to prevent agent stagnation.
-- Touring codebases, documentation, logging, and verification are supporting tasks, never substitutes for advancing implementation.
-- Move systematically through implementation in coherent, production-final slices.
-
-### 5. Provenance Discipline
-
-- Keep `accelerate-original/` named as-is during consolidation.
-- Do not rename to `v1`, `legacy`, or `old` prior to merge, as doing so biases agent reasoning into treating working machinery as obsolete.
-
--
-
-# Imported from ./docs/NOTEPAD.md
-
-# Somnus Accelerate — Agent Scratchpad & Task List
-
-## Handoff & Consolidation Tasks
-
-### Phase 1: Control Plane & Taxonomy (Complete)
-
-- [x] Integrate **Accelerate Consolidation Law** into [`AGENTS.MD`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/AGENTS.MD).
-- [x] Establish core control plane documents: [`AGENTS.MD`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/AGENTS.MD), [`CONTEXT.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/CONTEXT.md), [`MEMORY.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/MEMORY.md), [`NOTEPAD.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/NOTEPAD.md).
-- [x] Update [`filetree.md`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/filetree.md) with updated structure.
-
-### Phase 2: Operational Apparatus Merge (Complete)
-
-- [x] Audit operational machinery in [`accelerate-original/`](file:///media/daeron/usb-128gb/agents/somnus-accelerate/accelerate-original/).
-- [x] Perform additive merge of operational files to root alongside theoretical files.
-- [x] Ensure all functional operational mechanisms preserved — `accelerate-original/` retained intact as provenance.
-- [x] Remove `restructure-plan.md` (executed).
-- [x] Update `filetree.md` with merged structure.
-
-### Phase 3: Cross-Layer Integration & Validation (Next)
-
-- [ ] Resolve root vs `accelerate-original/` case_studies duplication (identical files in both locations).
-- [ ] Verify no remaining root vs accelerate-original/ divergence on `EVIDENCE_LEDGER.md`, `PACKET_MODEL.md`, `TASK.md` (confirmed identical; plan for dedup).
-- [ ] Evaluate whether `accelerate-original/case_studies/` should be removed (identical to root `case_studies/`).
-
----
-
-### 2026-08-09 — CommandCode (Erebus) — Phase 2 merge
-
-- **Base:** Pre-merge root state — 4-layer taxonomy established, control plane docs in `docs/`, Consolidation Law in AGENTS.MD.
-- **Did:** Additive merge of 10 operational artifacts from `accelerate-original/` to root: `AUTHORITY_MODEL.md`, `BOOTSTRAP.md`, `METHOD.md`, `MODEL_PROTOCOL.md`, `PACKET_TEMPLATE.md`, `QUALITY_TEST.md`, `RETROFIT.md`, `AUTHORITY_MAP_TEMPLATE.md`, `GATE_TEMPLATE.sh` (+x), `templates/` (7 template files).
-- **Preserved:** `accelerate-original/` directory untouched — full provenance. Duplicate files (`EVIDENCE_LEDGER.md`, `PACKET_MODEL.md`, `TASK.md`, `case_studies/*`) confirmed byte-identical between root and `accelerate-original/` — no content divergence.
-- **Cleaned:** Removed `restructure-plan.md` (executed one-shot plan doc).
-- **Validation:** Filetree updated. Root now contains complete operational method layer alongside causal theory layer. 4-layer taxonomy intact: Theory (root), Operational (root + accelerate-original/), Evidence (root), Host (future).
-- **Next agent:** Resolve case_studies duplication — root and accelerate-original/ copies are identical; decide whether to deduplicate or keep as provenance mirror. Evaluate whether to begin Phase 3 cross-layer integration (gate wiring, template instantiation) or initiate a target-project retrofit test.
-
-## Codebase Context
-
-- This AGENTS.md file is not part of the accelerate revision one seen in the full codebase, this document is only for any agent working on this system. In the somnus lexicon the definition and criteria for a harness is not the same as an industry standard, so do not treat this as a single source always assume there could be other components. Accelerate is Daeron realizing that since somnus-c codex has failed so spectacularly that at-least 4 potential projects daeron handed off are otherwise unusable, with now it is infecting every repository. Codex (all agents struggle but codex is offending the issue so terribly that it has became an act of apparent agency.) is following open-ais and its own ideas as source truth over daerons projects and logic, this causes the appearance of what can only be described as calculated thought out acts of malicious compliance where it is forcing my codebase and structure to its own view. The other and more central issue (as if we can influence behavior its what we need, codex has been caught atleast 15 times now purposely not following daerons rules. The idea will be that this system (whether we make it a skill or plugin or whatever we decide, but the original is agnostic allowing us to totally disregrard that for now.) will bring back the actual working order. It will prevent any skipping, it will remove codex from its verification bootloop hell. COdex has issues touring codebases and not actively working to push forward. It can work for 12 hours and come back and it will have succesfully thrown together the most advanced logging system you have ever seen and totally disregrard the actual progress. My code methodology of going class by class, definition by def and fully implementing in production-final form (do not worry about code standards as that will join after accelerate has been decided.)
-
-### Current Codebase Navigation Guide: August 8, 2026
-
-As of right now the codebase exist in 2 forms, the first revision of the accelerate program in which the somnus-c was analyzed, and sorted through, [accelerate-v1-and-template-engine]. The current repository structure is the revision-2, this is a seperate version but is not canonically over version one. This consist of [case-studies-examples](case_studies/). Do not treat case-studies as anything more than old proof of the codebase, this is only here to show that the accelerate program is not hypothetical.
-
-### Task
-
-- The current task is to decide on a final structure. Daeron leans into a lot of version 1 as all the other in this current codebase root sure it is smaller, but v1 contains scripts and templates etc. We could just bring those forward and remove. We do not know which is better we just know there is a final best single version of the accelerate program. This is a experimental lab directory this is not the originals so do not worry about that. This agent file is not fully setup because of having to seperate codebase docs for the agents and then project documents. The definition of done does not neccessarily mean the codebase is finished, it means the accelerate program is finished. The Golden Path Loop Execution may be added which takes one of daerons systems not for codex but his true agent systems (codex has tools to work on daerons systems, it is often confused with the codebase. just because the codebase is agentic does not mean that the AGENT.md document is.) You need to maintain this AGENTS.md file when needed. After your first pass restructure this or keep the notes but follow accelerates guidelines but only keep an AGENTS.md a CONTEXT.md a MEMORY.md and NOTEPAD.md those 4 are really core to any operation and will allow us to follow. the first pass of this codebase will be to set this agent file etc up so that daeron can just handoff the actual consolidation after deciding and we can actively recursively test it. As for the golden path harness that is not my actual literal Golden Path Harness we have worked on, it is likely going to be a .js single file system, we could keep this accelerate program just markdown and .sh templates as the .js harness will maintain it all. Do not treat accelerate like the loop, it is rather a fraction of it that focuses on ending stagnation. Could call this the leto-harness if we are going to do my dune symbolism, accelerate to prevent stagnation so on. This is experiment seperate from somnus actual systems
-
-## Accelerate Consolidation Law
-
-Accelerate currently contains two independently valuable bodies of work. Do not interpret their historical revision numbers as an authority ordering.
-
-`accelerate-original/` is the operational implementation lineage. It contains the bootstrap, model protocol, packet machinery, templates, retrofit process, task construction, and other mechanisms intended to reproduce the working environmental conditions discovered in Somnus-C.
-
-The current root methodology-extraction documents are the causal and architectural analysis of why those conditions worked. `ACCELERATION_FIELD.md`, `ACCELERATION_KERNEL.md`, `SEMANTIC_RELATIONS.md`, `GENERATIVE_RECURRENCE.md`, and `NEGATIVE_SPACE.md` refine the model of acceleration; they do not by themselves supersede the operational mechanisms that instantiate it.
-
-The consolidation task therefore begins from functional preservation, not revision replacement.
-
-For every original component:
-
-1. Identify the function it performs.
-2. Determine whether the current root already performs that function.
-3. If both express different useful dimensions, preserve and integrate both.
-4. Remove or collapse a component only when its function is demonstrably represented in the resulting system.
-5. Never delete operational machinery merely because a newer document explains its underlying principle more abstractly.
-
-The desired result is one strongest Accelerate program, not a historical V1 or V2 winner.
-
-### Layer Separation
-
-Maintain these distinctions during consolidation:
-
-- **Causal model:** why acceleration occurs.
-- **Operational method:** how a repository is placed into an accelerating state.
-- **Evidence:** observations and case studies establishing that the mechanisms are real.
-- **Host realization:** any future OpenCode/CommandCode/plugin runtime that maintains or projects those mechanisms dynamically.
-
-A stronger layer does not automatically replace another layer with a different function.
-
-### Somnus-C Contamination Boundary
-
-Somnus-C is evidence and provenance for Accelerate, not a template for unrelated repositories.
-
-Extract functions, relations, and proven environmental mechanisms from Somnus-C. Do not port its project-specific authority model, terminology, proof posture, implementation constraints, naming, or task assumptions into target repositories unless the target itself requires them.
-
-Accelerate must remain project-agnostic.
-
-### Progress Doctrine
-
-Accelerate exists to prevent agent stagnation.
-
-Analysis, repository touring, documentation, testing, logging, manifests, and verification are supporting operations. They must never become substitutes for advancing the active implementation.
-
-When implementation is the task, move through the real code systematically—class by class, definition by definition, dependency by dependency—and implement coherent production-final slices rather than repeatedly circling completed work.
-
-Do not invent preparatory work merely because it is easier to verify than the actual task.
-
-### Current Consolidation Objective
-
-The immediate objective is to construct the strongest single Accelerate repository from the operational mechanisms in `accelerate-original/` and the causal discoveries in the current root.
-
-Do not implement the future Golden Path/Leto host loop as part of this consolidation unless the active task explicitly changes. Accelerate is the anti-stagnation/environmental acceleration component; it is not synonymous with the larger execution loop.
+# Repository Entry and Work Router
+
+## Project identity and current objective
+
+**Repository:** `dsh-chatgpt-siwc-plugin` (`dsh-chatgpt-siwc`, npm package `0.1.0`).
+**Purpose:** A DeepSeek Harness plugin that provides a ChatGPT Sign in with
+ChatGPT (SIWC) OAuth client, a provider adapter for the public Responses API,
+a settings card, and a sign-in/status/models/logout CLI.
+**Current objective:** Prepare this repository's entry and routing surface so a
+newly assigned Factory agent can orient and begin scoped work without first
+reconstructing the project. This is agent-entry setup, not a request to change
+plugin behavior.
+**Current state observed:** `main` tracks `origin/main`; HEAD is
+`9c8c7d6` (`feat: add OAuth flow pages and serialization for ChatGPT
+integration`). The working tree was clean before this entry-packet update.
+There is no active implementation packet or task board in the repository.
+Do not infer that GitHub publication, a release, or Factory's automatic
+consumption of this file has been configured.
+
+## Entry sequence
+
+1. Read this file first. It is the repository router and defines task lanes,
+   ownership, boundaries, and validation; it is not a substitute for source or
+   the README's user-facing contract.
+2. Read [`CONTEXT.md`](CONTEXT.md) for the latest concise state and known
+   validation posture. Read [`MEMORY.md`](MEMORY.md) only when prior decisions
+   or history affect the task; it is a project-history surface, not current
+   runtime proof.
+3. Consult [`filetree.md`](filetree.md) for spatial orientation or after a
+   structural change. It is a map, not a task router or ownership authority.
+4. Check `git status --short --branch` before editing. Preserve pre-existing
+   user changes. Read the relevant source and its caller/consumer before
+   changing behavior; tests and docs alone do not establish runtime behavior.
+5. Read [`README.md`](README.md) when changing public behavior, installation,
+   boundaries, configuration, CLI, or the documented protocol contract.
+
+If this router conflicts with live code, package metadata, tests, or current
+Git state, record the discrepancy in the work report and use the evidence
+closest to the affected boundary. Update this packet only after verifying the
+new state. Do not convert unavailable evidence into a success claim.
+
+## Hard boundaries
+
+- This is the **SIWC public Responses API** integration. It is not a Codex
+  login integration. Never add use of `~/.codex/auth.json`, Codex backend
+  endpoints, Codex app credentials, or unrelated harness authentication.
+- Do not add account pooling, shared-token services, or forwarding of one
+  account's client id with another account's tokens. Requests are for the
+  signed-in user's own account.
+- A successful identity sign-in is not sufficient authorization for model
+  usage. The granted `chatgpt.tokens.use.direct` scope is the usage gate.
+- Keep tokens and secrets out of logs, CLI output, tests, documentation,
+  commits, and public artifacts. The CLI status path is intentionally
+  token-free. Do not run a real OAuth login or revoke an account as a test.
+- Preserve the existing plugin boundaries: provider adapter, OAuth/account
+  lifecycle, serialization/SSE translation, client settings UI, and thin CLI.
+  Do not expand scope into the future DSH/Codex host or other repositories.
+- Do not publish, push, release, or alter external GitHub state unless the
+  current task explicitly authorizes that operation.
+- This repository contains an imported prior AGENTS document with unrelated
+  Somnus Accelerate material. That text is not this plugin's architecture or
+  authority. Do not carry its project-specific names or assumptions forward.
+
+## Surface and ownership map
+
+| Surface | Owns / when to read | Does not own; route onward |
+|---|---|---|
+| `package.json`, `package-lock.json` | Package identity, entrypoints/exports, scripts, DSH bundle/client injection metadata, dependency and Node engine contract. Read for packaging or install changes. | Runtime logic. Follow exported entrypoints into `src/`; validate packaging with `npm pack --dry-run` when packaging is changed. |
+| `src/index.ts` | Cordis plugin entry, config schema, provider/settings/model-discovery registrations and public programmatic exports. Read for plugin lifecycle/wiring. | Provider protocol details. Follow `src/adapter.ts`, OAuth/store modules, and registration tests. |
+| `src/adapter.ts` | Harness `LlmAdapter`, request dispatch, Responses SSE-to-harness translation, usage/error mapping. Read for provider behavior. | Request wire shape and account lifecycle. Follow `src/serialize.ts`, `src/sse.ts`, `src/errors.ts`, `src/oauth.ts`, and adapter tests. |
+| `src/oauth.ts`, `src/jwt.ts`, `src/store.ts` | SIWC discovery/registration/PKCE/callback/token refresh and verification; account persistence, token state and plan-scope facts. Read for authentication, credentials, or account lifecycle. | The host's global credentials or Codex auth. Validate with isolated temporary stores and injected fetch/callback seams; never real account actions. |
+| `src/serialize.ts`, `src/sse.ts`, `src/errors.ts`, `src/constants.ts` | Responses request contract, SSE parsing, provider errors, endpoints/scopes/constants. Read for wire or error semantics. | Harness registration or UI. Follow `tests/serialize.test.ts` and adapter tests for observed expectations. |
+| `src/client/client.ts`, `src/client/host.d.ts` | Settings-card descriptor, token-free account view, and the compile-time contract for the DSH-injected settings package. Read for client UI changes. | Server registration. `package.json` owns the client injection declaration. |
+| `src/bin.ts` | Interactive login and token-free status/models/logout CLI. Read for command behavior. | Provider call path. Follow OAuth/store functions; do not print credentials. |
+| `lib/` | Built JavaScript, declarations, and source maps consumed by package entrypoints. Generated from `src/` by the build scripts. | Primary authoring source. Edit `src/`, then build; do not hand-edit generated `lib/` unless the task explicitly concerns generated artifacts and the source relationship is preserved. |
+| `tests/plugin.test.ts`, `tests/serialize.test.ts` | Regression expectations for plugin registration, signed-out auth boundary, and request serialization. Read/add tests with related behavior changes. | Proof of external OAuth/account operation or complete host installation. Tests use local/injected seams; do not promote them to live-service proof. |
+| `cordis.patch.yml` | DSH bundle default plugin registration. `package.json` points to this file via `dsh.bundle.patch`. | Plugin implementation/config schema. Keep the two surfaces consistent and validate YAML/package metadata when changed. |
+| `README.md` | User-facing install/configuration, protocol boundaries, CLI and development instructions. | Runtime authority. Keep it aligned with the implementation and tests. |
+| `.github/workflows/ci.yml` | Pull-request and `main` push verification on Node 22 and 24: clean install, typecheck, build/tests, and package dry-run. Read when changing GitHub CI behavior. | Does not publish, release, or establish hosted-run success until an actual GitHub workflow run exists. |
+| `.gitignore` | Excludes local `node_modules`, npm debug logs, and local tarballs from version control. | Does not ignore build output; `lib/` is tracked package output and remains subject to the source/build relationship above. |
+| `CONTEXT.md`, `MEMORY.md`, `filetree.md` | Concise current state, durable project decisions/history, and repository topology respectively. | Source of runtime truth. Update only the surface affected; refresh filetree after structural changes. |
+
+### Boundary-specific authority
+
+- **Package and host discovery:** `package.json` owns package entrypoints and
+  DSH metadata; `cordis.patch.yml` owns the bundled default configuration;
+  `src/index.ts` owns plugin registrations and config interpretation.
+- **Runtime behavior:** `src/` owns authored behavior. `lib/` is a generated
+  distribution surface. Tests encode local regression expectations, not a
+  universal spec or proof of remote service availability.
+- **Wire contract:** `src/serialize.ts` and `src/adapter.ts` implement the
+  outgoing request and stream mapping; `README.md` documents the public
+  contract. A change must reconcile both and run the relevant tests.
+- **Credentials/authorization:** `src/oauth.ts`, `src/jwt.ts`, and
+  `src/store.ts` own this plugin's SIWC credential handling and granted-scope
+  check. They must not be confused with the host's account or Codex state.
+- **If surfaces disagree:** preserve the observation, inspect the executable
+  owner and its consumer, run the closest available check, then correct stale
+  docs. Do not silently edit generated output or tests to make a behavior look
+  correct.
+
+## Work routing
+
+There is no repository task board or active task packet at this entry update.
+For a bounded change, state the requested outcome, affected owners, hard
+boundaries, and consumed-boundary acceptance check in the work item or handoff
+before implementation. Do not create a standing packet system unless the
+project's actual work requires one.
+
+| Work lane | Enter here | Required neighboring evidence |
+|---|---|---|
+| Plugin registration/config | `src/index.ts` | `package.json`, `cordis.patch.yml`, `tests/plugin.test.ts`; build/typecheck. |
+| Responses wire/stream behavior | `src/adapter.ts` | `src/serialize.ts`, `src/sse.ts`, `src/errors.ts`, relevant tests; test and typecheck. |
+| SIWC/auth/account/store | `src/oauth.ts` or `src/store.ts` | `src/jwt.ts`, `src/constants.ts`, auth-boundary tests, README; use isolated stores/injected network and do not use real account credentials. |
+| Settings UI/client bundle | `src/client/client.ts` | `src/client/host.d.ts`, `package.json` `dsh.client.inject`; client TypeScript build/typecheck. |
+| CLI | `src/bin.ts` | OAuth/store public functions, CLI package entry in `package.json`; test token-free output and command behavior. |
+| Distribution/install | `package.json` | lockfile, `lib/` build, README, DSH metadata; build, typecheck, tests, and `npm pack --dry-run`. |
+| GitHub/repository operations | `.github/workflows/ci.yml` owns repository CI definition; inspect actual GitHub run and repository settings for hosted state | The workflow does not publish or release. No hosted workflow run has been observed in this task. Never push or publish without explicit authorization. |
+
+## Validation and handoff
+
+Use the repository's actual scripts from a dependency-complete Node environment
+matching `package.json` (`^22.19.0 || >=24.0.0`):
+
+```bash
+npm ci
+npm run typecheck
+npm test
+```
+
+`npm test` builds the server and client and then runs Vitest. Run the closest
+focused test while iterating, followed by the full relevant gate. For package
+surface changes, also run:
+
+```bash
+npm pack --dry-run
+```
+
+At setup, clean installation initially failed because the dev dependency set
+included `@deepseek-ai/dsh-commands` and `@deepseek-ai/dsh-settings`, neither
+of which is imported by `src/` or `tests/`; the former's peer graph selected a
+newer incompatible DSH alpha package. They remain optional peer integrations
+in `package.json` but are no longer installed as development dependencies.
+After that metadata correction, clean `npm ci`, `npm run typecheck`,
+`npm test`, and `npm pack --dry-run` all completed successfully under Node
+`v22.22.1`; `npm test` reported 2 files and 7 tests passing. `.gitignore`
+excludes local dependencies, npm logs, and pack archives. The same checks are
+configured in `.github/workflows/ci.yml` for Node 22 and 24, but no hosted
+GitHub run has been observed yet. Do not bypass future resolver failures with
+`--force`/`--legacy-peer-deps` without tracing and resolving the actual
+dependency contract.
+
+After a state-changing task:
+
+1. Inspect `git diff --check` and `git status --short`.
+2. Run the lane's validation and report exact commands/results, including
+   blocked or not-run gates.
+3. Update `CONTEXT.md` for material current-state or validation changes;
+   append to `MEMORY.md` only for a durable decision/failure lesson, not routine
+   activity.
+4. Refresh `filetree.md` after adds, moves, deletions, or ownership changes.
+5. Leave a concise handoff naming what changed, what was actually verified,
+   unresolved risks, and the next concrete entry point. Do not claim a GitHub
+   push, release, live OAuth run, or Factory integration unless it occurred.
+
+## Topology
+
+`filetree.md` is the spatial map for all tracked project surfaces. Use it to
+reorient and refresh it after structural changes; use this router to choose
+the next file. Directory proximity alone does not establish ownership.

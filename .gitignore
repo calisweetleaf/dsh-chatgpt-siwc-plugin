@@ -1,0 +1,6 @@
+# Local dependency installation
+/node_modules/
+
+# Local npm diagnostics and package archives
+npm-debug.log*
+*.tgz
