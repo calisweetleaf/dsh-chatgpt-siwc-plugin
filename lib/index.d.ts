@@ -38,6 +38,14 @@ export interface PluginConfig {
     /** Accounts file override; default is the Harness home location. */
     storePath?: string;
 }
+/** The same keys after schema resolution: the two defaults are always present. */
+export interface ResolvedConfig {
+    provider: string;
+    agentNameHint: string;
+    apiBaseUrl?: string;
+    reasoningEffort?: string;
+    storePath?: string;
+}
 export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     provider: Schema<string, string, "defined">;
     agentNameHint: Schema<string, string, "defined">;
@@ -58,8 +66,9 @@ export { discoverEndpoints, ensureAccessToken, fetchModels, login, logout, openU
 export type { CatalogModel, LoginOptions, LoginReporter, LoginResult, SiwcEndpoints, SiwcOverrides, } from './oauth.ts';
 export { AccountsStore, applyTokens, defaultStorePath, isSignedIn, parseScopes, planGranted, publicView, } from './store.ts';
 export type { AccountRecord, AccountsDocument, TokenSet } from './store.ts';
-export { serializeRequest } from './serialize.ts';
+export { EFFORT_MAP, serializeRequest } from './serialize.ts';
 export type { ResponsesInputItem, ResponsesRequest } from './serialize.ts';
+export type { CallbackOutcome } from './oauth.ts';
 export { parseSseEvents } from './sse.ts';
 export type { SseEvent } from './sse.ts';
 export { describeSubscriptionError, isSubscriptionError, isUsageLimitError, SiwcError, } from './errors.ts';

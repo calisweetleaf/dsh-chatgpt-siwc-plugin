@@ -4,3 +4,6 @@
 # Local npm diagnostics and package archives
 npm-debug.log*
 *.tgz
+
+# Surgeon edit journal (per-workspace, never committed)
+.surgeon/

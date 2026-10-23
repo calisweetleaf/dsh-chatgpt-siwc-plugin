@@ -1,0 +1,198 @@
+/*
+ * The ChatGPT SIWC card's stylesheet. Imported as text and injected once at
+ * bundle materialization (the module system claims the <style> tag); class
+ * names carry the `siwc-` prefix, which only this card uses. Colors go
+ * through the harness's `--dsw-*` semantic aliases only.
+ */
+
+.siwc-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.siwc-unavailable,
+.siwc-readonly {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.siwc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+}
+
+.siwc-field + .siwc-field {
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.siwc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.siwc-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+}
+
+.siwc-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.siwc-badge {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.siwc-reset {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.siwc-reset:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+}
+
+.siwc-reset:disabled {
+  cursor: default;
+}
+
+.siwc-input,
+.siwc-select {
+  height: 34px;
+  padding: 0 12px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-3);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+}
+
+.siwc-select {
+  appearance: none;
+}
+
+.siwc-input:focus-visible,
+.siwc-select:focus-visible {
+  outline: none;
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.siwc-input:disabled,
+.siwc-select:disabled {
+  color: var(--dsw-alias-label-tertiary);
+  cursor: default;
+}
+
+.siwc-input[aria-invalid='true'],
+.siwc-select[aria-invalid='true'] {
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+.siwc-invalid {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.siwc-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.siwc-signin {
+  margin: 4px 0 0;
+  padding: 12px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+}
+
+.siwc-signin h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+}
+
+.siwc-signin p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.siwc-signin p + p {
+  margin-top: 6px;
+}
+
+.siwc-signin a {
+  color: var(--dsw-alias-brand-primary);
+}
+
+.siwc-signin code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.siwc-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.siwc-failed {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-error);
+}
+
+.siwc-save {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-bg-layer-3);
+}
+
+.siwc-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.siwc-save:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}

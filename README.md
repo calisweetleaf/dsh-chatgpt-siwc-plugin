@@ -32,6 +32,11 @@ card, one CLI. Nothing else.
    used for the code exchange and every later refresh.
 2. **Authorization code + PKCE (S256)** against a loopback listener on
    `127.0.0.1` (path `/auth/callback`), fresh `state`/`nonce` per attempt.
+   The loopback tab is held open until the flow validates, so it lands on
+   the outcome itself — "You're signed in" or the failure — and a first
+   sign-in on an install shows the per-app-cap hint exactly once. Every
+   control-plane fetch (discovery, token, JWKS, models) is bounded, and
+   the held page has its own deadline, so no sign-in can hang a tab.
 3. **Code exchange** at the token endpoint with
    `resource=https://api.openai.com/v1`. No client secret.
 4. **ID-token verification** (JWKS, issuer, audience, nonce). Granted
@@ -64,14 +69,27 @@ plugins:
 
 Optional config keys: `apiBaseUrl` (public API base override),
 `reasoningEffort` (effort materialized when a call names none),
-`storePath` (accounts file override).
+`storePath` (accounts file override). While a settings service is
+mounted, the whole section is live-editable from the Plugins page: a
+committed change takes effect without a restart, and renaming `provider`
+re-registers the route atomically (a refused rename keeps the previous
+route serving).
 
-The settings UI card is in `src/client` (visual identity: white surface,
-near-black ink, one green accent reserved for "plan active"). It is
-bundled by the harness client, which provides the
-`@deepseek-ai/dsh-client-ui-settings-plugins` runtime package named in
-`package.json` under `dsh.client.inject`; the registration contract the
-client compiles against is declared in `src/client/host.d.ts`.
+The settings card lives on the harness web client's **Plugins page**, in
+the two halves every harness card is built from. The Host half
+(`src/index.ts`) serves the `dsh-chatgpt-siwc` settings namespace through
+`ctx.settings.installSection`, which is what makes the section
+live-editable and its committed changes effective without a restart. The
+browser half (`src/client`) registers into the Plugins page's
+`plugins.item` slot and edits the namespace through the client settings
+scope — staged drafts, one save, override badges, revision-fenced
+writes — only while the Host serves the namespace. `scripts/build-client.mjs`
+builds the browser half into the harness client-module artifact
+(`window.__ModuleLoader__.load({ id, factory })` around one CJS bundle,
+with baseline platform modules as bare requires), which the harness
+client discovers from `package.json`'s `dsh.client` declaration. The
+card configures; it does not authenticate — sign-in stays in the terminal
+flow (`dsh-chatgpt-siwc login`), which the card says plainly.
 
 ## CLI
 
@@ -104,12 +122,24 @@ The serializer enforces the plan-usage contract by omission:
 ## Development
 
 ```bash
-npm run build      # server (tsconfig.build.json) + client (tsconfig.client.json)
+npm run build      # server (tsconfig.build.json) + client bundle (esbuild → lib/client.js)
 npm run typecheck  # both projects, noEmit
-npm test           # build, then vitest (wire contract + registration/auth boundary)
+npm test           # build, then vitest
 ```
 
-The OAuth flow itself is exercised by signing in; the test suite covers
-everything that can be verified without an account: the serializer's
-wire contract, plugin registration wiring, and the adapter's AUTH
-boundary with an empty store.
+The client bundle reproduces the harness client-module artifact format
+(`window.__ModuleLoader__.load({ id, factory })` wrapping one CJS bundle;
+baseline platform modules stay bare requires answered by the module
+table) — a package outside the harness repository builds that shape
+itself, per the harness cookbook's "adding a settings card".
+
+The test suite covers everything verifiable without an account: the
+serializer's wire contract and effort vocabulary, the SSE stream
+translation (text, reasoning, tool calls, backfill, mid-stream failures,
+abort), ID-token verification (signature, nonce, expiry, audience, key
+rotation), the OAuth client end to end against fake endpoints and a real
+loopback listener (authorize-URL contract, held outcome page, refresh
+rotation and refusal, revocation, discovery), plugin registration with
+settings-driven re-registration, and the settings card's staged form. No
+test uses a real endpoint or account; every control-plane fetch in tests
+goes through an injected fake.

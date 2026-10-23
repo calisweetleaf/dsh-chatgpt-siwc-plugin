@@ -1,8 +1,9 @@
 /**
- * The loopback pages the OAuth flow serves on `127.0.0.1` — the visual
+ * The sign-in pages the loopback flow serves on `127.0.0.1` — the visual
  * surface a user actually sees mid-login. Same identity as the Web UI
- * card in `src/client`: white surface, near-black primary button,
- * one accent (green) reserved for "plan active".
+ * card: white surface, near-black ink, one accent (green) reserved for
+ * "plan active". The callback page is held until the sign-in is validated,
+ * so the browser lands on the outcome itself, never on a stale spinner.
  *
  * @module dsh-chatgpt-siwc/pages
  */
@@ -62,15 +63,6 @@ export function successPage(email: string | undefined, plan: boolean, firstTime:
       ? '<p class="fine">You can review usage and set a per-app cap any time in ChatGPT settings under Usage.</p>'
       : ''}
     <p class="fine">You can close this tab and return to DeepSeek Harness.</p>`)
-}
-
-/** Shown on the loopback callback once the code arrives — sign-in is still being validated at this point. */
-export function completingPage(): string {
-  return page('Completing sign-in', `
-    <h1>Completing sign-in…</h1>
-    <div class="spinner" role="status" aria-label="Completing"></div>
-    <p>DeepSeek Harness is validating the sign-in. The result appears there, not in this tab.</p>
-    <p class="fine">You can close this tab.</p>`)
 }
 
 /** Shown on the loopback callback when the flow fails or is denied. */

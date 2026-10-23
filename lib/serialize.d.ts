@@ -64,6 +64,8 @@ export interface ResponsesRequest {
     store: false;
     stream: true;
 }
+/** Harness reasoning efforts mapped onto Responses effort levels (`max` has no Responses spelling). The picker offers the subset in adapter EFFORTS; the serializer accepts this whole table. */
+export declare const EFFORT_MAP: Record<string, string>;
 /**
  * Build one Responses request from a harness request.
  * @param options - the harness request.

@@ -87,6 +87,16 @@ export declare function buildAuthorizeUrl(input: {
  * until its identity is validated.
  */
 export declare function login(options: LoginOptions): Promise<LoginResult>;
+/** The final page the held loopback callback renders for one attempt. */
+export type CallbackOutcome = {
+    ok: true;
+    email?: string;
+    plan: boolean;
+    firstTime: boolean;
+} | {
+    ok: false;
+    message: string;
+};
 /**
  * Refresh one account's access token, serialized per account so two
  * callers never race a rotating refresh token. The replacement token
@@ -135,5 +145,6 @@ export interface CatalogModel {
  */
 export declare function fetchModels(accessToken: string, overrides?: SiwcOverrides & {
     apiBaseUrl?: string;
+    signal?: AbortSignal;
 }): Promise<CatalogModel[]>;
 export { PLAN_SCOPE };

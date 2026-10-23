@@ -43,8 +43,8 @@ export interface ResponsesRequest {
   stream: true
 }
 
-/** Harness reasoning efforts mapped onto Responses effort levels (`max` has no Responses spelling). */
-const EFFORT_MAP: Record<string, string> = {
+/** Harness reasoning efforts mapped onto Responses effort levels (`max` has no Responses spelling). The picker offers the subset in adapter EFFORTS; the serializer accepts this whole table. */
+export const EFFORT_MAP: Record<string, string> = {
   minimal: 'low',
   low: 'low',
   medium: 'medium',

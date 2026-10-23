@@ -1,0 +1,319 @@
+/**
+ * Staged form over the `dsh-chatgpt-siwc` settings namespace.
+ *
+ * A card stages what the user types and writes it only when they save: each
+ * settings write is a durable, revision-fenced document mutation, so a control
+ * that committed as it settled would turn one edit into a write the user
+ * never asked for. A field shows its effective value — the user layer over
+ * the composition layer — and whether the user layer carries it: presence,
+ * not a value comparison, is what marks a field overridden.
+ *
+ * @module dsh-chatgpt-siwc/client/card-form
+ */
+
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+
+/** The write one field's staged text performs when the card is saved. */
+export type SiwcFieldWrite =
+  | { kind: 'set'; value: string }
+  | { kind: 'clear' }
+
+/** How one section field converts between its stored value and its draft text. */
+export interface SiwcFieldSpec {
+  /** Field name inside the namespace section. */
+  field: string
+  /** Render a stored value as draft text; the empty string when the section carries none. */
+  format: (value: unknown) => string
+  /**
+   * The write this draft text stages, or undefined when the text is not a
+   * value this field accepts — which blocks the save rather than discarding it.
+   */
+  parse: (text: string) => SiwcFieldWrite | undefined
+}
+
+/** One field as the card's control renders it. */
+export interface SiwcFieldState {
+  /** Draft text the control renders. */
+  text: string
+  /** Whether saving would leave a user-layer entry for this field. */
+  overridden: boolean
+  /** Whether the draft is not a value this field accepts, which blocks saving. */
+  invalid: boolean
+}
+
+/** Form state the whole card shares. */
+export interface SiwcCardShell {
+  /** False while the namespace is not served to this client. */
+  available: boolean
+  /** Whether the Host document accepts writes. */
+  writable: boolean
+  /** Whether the form holds edits that a save would write. */
+  dirty: boolean
+  /** Whether any staged draft is invalid, which blocks the save. */
+  invalid: boolean
+  /** Whether a save is crossing the wire. */
+  saving: boolean
+  /** Whether the last save did not land as staged; cleared by the next edit or save. */
+  failed: boolean
+}
+
+/** The edit, reset, save, and discard actions the card's slot entry injects. */
+export interface SiwcCardActions {
+  /** Stage draft text for one field. */
+  edit: (field: string, text: string) => void
+  /** Stage a clear, so saving lets the field re-inherit the composition layer. */
+  resetField: (field: string) => void
+  /** Write every staged edit, then re-seed from what the Host accepted. */
+  save: () => void
+  /** Drop every staged edit. */
+  discard: () => void
+}
+
+/** One field's staged edit. */
+interface StagedEdit {
+  /** Draft text the control renders. */
+  text: string
+  /** True when this edit clears the field whatever text it shows. */
+  clear: boolean
+}
+
+/** One staged edit resolved into the write a save performs. */
+interface PlannedWrite {
+  /** Field this entry writes. */
+  field: string
+  /**
+   * Perform the write and report whether the Host holds the staged value
+   * afterwards; undefined when the draft is not a value the field accepts.
+   */
+  run: (() => Promise<boolean>) | undefined
+}
+
+/**
+ * A free-text field. An empty draft clears the field, so emptying the control
+ * and saving is the same gesture as resetting it.
+ * @param field - field name inside the namespace section.
+ * @returns the field's conversion spec.
+ */
+export function textField(field: string): SiwcFieldSpec {
+  return {
+    field,
+    format: value => (typeof value === 'string' ? value : ''),
+    parse: (text) => {
+      const trimmed = text.trim()
+      return trimmed === '' ? { kind: 'clear' } : { kind: 'set', value: trimmed }
+    },
+  }
+}
+
+/**
+ * A one-of-few field offered as a select: an empty draft selects the
+ * composition default, and any other draft must name an accepted value.
+ * @param field - field name inside the namespace section.
+ * @param options - the values this field accepts.
+ * @returns the field's conversion spec.
+ */
+export function selectField(field: string, options: readonly string[]): SiwcFieldSpec {
+  const accepted = new Set(options)
+  return {
+    field,
+    format: value => (typeof value === 'string' && accepted.has(value) ? value : ''),
+    parse: (text) => {
+      const trimmed = text.trim()
+      return trimmed === '' ? { kind: 'clear' } : accepted.has(trimmed) ? { kind: 'set', value: trimmed } : undefined
+    },
+  }
+}
+
+/**
+ * Stages the card's edits over one settings namespace and writes them on
+ * save. The form publishes through a snapshot store because slot components
+ * read through a snapshot selector, while both the scope and the local
+ * drafts change underneath; every projection is rebuilt from the two together.
+ */
+export class SiwcCardForm<T> {
+  private readonly specs: Map<string, SiwcFieldSpec>
+  private readonly staged = new Map<string, StagedEdit>()
+  private readonly listeners = new Set<() => void>()
+  private saving = false
+  private failed = false
+
+  /**
+   * @param scope - the bound settings scope for this card's namespace.
+   * @param specs - the section fields this card edits.
+   */
+  constructor(
+    private readonly scope: SettingsScope<T>,
+    specs: SiwcFieldSpec[],
+  ) {
+    this.specs = new Map(specs.map(spec => [spec.field, spec]))
+    scope.subscribe(() => { this.publish() })
+  }
+
+  /** Drop the projection listeners; the scope's own lifecycle is separate. */
+  dispose(): void {
+    this.listeners.clear()
+  }
+
+  /**
+   * Publish a projection of this form, rebuilt whenever the scope or a draft changes.
+   * @param project - build the card's state from the form's current reads.
+   * @returns the store the card's component reads through its bound selector.
+   */
+  bind<S>(project: () => S): SnapshotStore<S> {
+    const store = createSnapshotStore(project())
+    this.listeners.add(() => { store.set(project()) })
+    return store
+  }
+
+  /**
+   * Read the card-level state: what the Host serves, and what a save would do.
+   * @returns the form state the whole card shares.
+   */
+  shell(): SiwcCardShell {
+    const plan = this.plan()
+    return {
+      available: this.snapshotOf().status === 'ready',
+      writable: this.snapshotOf().writable,
+      dirty: plan.length > 0,
+      invalid: plan.some(item => item.run === undefined),
+      saving: this.saving,
+      failed: this.failed,
+    }
+  }
+
+  /**
+   * Read one control's state.
+   * @param field - field name inside the namespace section.
+   * @returns the draft text, whether a save would leave an override, and whether it is invalid.
+   */
+  field(field: string): SiwcFieldState {
+    const staged = this.staged.get(field)
+    const spec = this.specOf(field)
+    if (staged === undefined) {
+      return { text: spec.format(this.sectionValue(field)), overridden: this.stored(field), invalid: false }
+    }
+    const write = staged.clear ? ({ kind: 'clear' } as const) : spec.parse(staged.text)
+    return {
+      text: staged.text,
+      overridden: write?.kind === 'set',
+      invalid: write === undefined,
+    }
+  }
+
+  /**
+   * Build the edit, reset, save, and discard actions bound to this form.
+   * @returns the actions the card's slot entry injects.
+   */
+  actions(): SiwcCardActions {
+    return {
+      edit: (field, text) => { this.stage(field, { text, clear: false }) },
+      resetField: (field) => {
+        this.stage(field, { text: this.specOf(field).format(this.baseValue(field)), clear: true })
+      },
+      save: () => { void this.save() },
+      discard: () => {
+        if (this.staged.size === 0 && !this.failed) return
+        this.staged.clear()
+        this.failed = false
+        this.publish()
+      },
+    }
+  }
+
+  /**
+   * Write every staged edit, then re-seed from what the Host accepted. The
+   * Host is the only authority on whether a value was accepted, so the
+   * outcome is read back from the section rather than predicted here. A
+   * save that did not land keeps its drafts, so the user can correct them.
+   * @returns settlement after every write and the read-back.
+   */
+  async save(): Promise<void> {
+    const plan = this.plan()
+    const writes = plan.flatMap(item => item.run === undefined ? [] : [item.run])
+    if (plan.length === 0 || this.saving || writes.length !== plan.length) return
+    this.saving = true
+    this.failed = false
+    this.publish()
+    let landed = true
+    for (const write of writes) {
+      landed = await write() && landed
+    }
+    if (landed) this.staged.clear()
+    this.saving = false
+    this.failed = !landed
+    this.publish()
+  }
+
+  /**
+   * Every staged edit a save would write, in staging order. An entry whose
+   * draft is not a value its field accepts carries no write: the form is
+   * still dirty, and the save refuses rather than dropping the edit.
+   * @returns the planned writes.
+   */
+  private plan(): PlannedWrite[] {
+    const plan: PlannedWrite[] = []
+    for (const [field, staged] of this.staged) {
+      const spec = this.specOf(field)
+      if (staged.clear) {
+        if (this.stored(field)) plan.push({ field, run: () => this.clear(field) })
+        continue
+      }
+      if (staged.text === spec.format(this.sectionValue(field))) continue
+      const write = spec.parse(staged.text)
+      if (write === undefined) plan.push({ field, run: undefined })
+      else if (write.kind === 'clear') plan.push({ field, run: () => this.clear(field) })
+      else plan.push({ field, run: () => this.store(field, write.value) })
+    }
+    return plan
+  }
+
+  private async clear(field: string): Promise<boolean> {
+    await this.scope.unset(field)
+    return !this.stored(field)
+  }
+
+  private async store(field: string, value: string): Promise<boolean> {
+    await this.scope.set(field, value)
+    return this.userLayer()?.[field] === value
+  }
+
+  private stage(field: string, edit: StagedEdit): void {
+    this.staged.set(field, edit)
+    this.failed = false
+    this.publish()
+  }
+
+  private specOf(field: string): SiwcFieldSpec {
+    const spec = this.specs.get(field)
+    // Every call site names a field this card declared; a missing one is a
+    // wiring mistake that must not degrade into a silently inert control.
+    if (spec === undefined) throw new Error(`dsh-chatgpt-siwc card has no field ${field}`)
+    return spec
+  }
+
+  private snapshotOf(): SettingsScopeSnapshot<T> {
+    return this.scope.getSnapshot()
+  }
+
+  private sectionValue(field: string): unknown {
+    return (this.snapshotOf().value as Record<string, unknown> | undefined)?.[field]
+  }
+
+  private baseValue(field: string): unknown {
+    return (this.snapshotOf().base as Record<string, unknown> | undefined)?.[field]
+  }
+
+  private userLayer(): Record<string, unknown> | undefined {
+    return this.snapshotOf().user as Record<string, unknown> | undefined
+  }
+
+  private stored(field: string): boolean {
+    const user = this.userLayer()
+    return user !== undefined && Object.hasOwn(user, field)
+  }
+
+  private publish(): void {
+    for (const listener of this.listeners) listener()
+  }
+}

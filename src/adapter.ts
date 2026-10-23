@@ -41,11 +41,12 @@ import { planGranted } from './store.ts'
 import type { AccountsStore } from './store.ts'
 
 export interface SiwcAdapterOptions {
-  store: AccountsStore
-  /** Public API base; defaults to the documented production base. */
-  apiBaseUrl?: string
-  /** Reasoning effort materialized when a call names none. */
-  reasoningEffort?: string
+  /** Account store holding SIWC registrations; a provider keeps it live with config. */
+  store: AccountsStore | (() => AccountsStore)
+  /** Public API base; a provider keeps it live. Defaults to the documented production base. */
+  apiBaseUrl?: string | (() => string | undefined)
+  /** Reasoning effort materialized when a call names none; a provider keeps it live. */
+  reasoningEffort?: string | (() => string | undefined)
   /** Test/embedding seam: override fetch. */
   fetchFn?: typeof fetch
 }
@@ -98,6 +99,11 @@ interface BlockState {
 function toLlmError(err: unknown): LlmError {
   if (err instanceof LlmError) return err
   if (err instanceof SiwcError) {
+    if (err.code === 'PLAN_NOT_GRANTED') {
+      // The account is signed in but plan usage was not granted: an
+      // authorization failure whose fix is a sign-in that approves plan usage.
+      return new LlmError(err.message, 'AUTH', { cause: err })
+    }
     if (err.code === 'REAUTH_REQUIRED' || err.code === 'MISSING_CREDENTIAL') {
       return new LlmError(
         'ChatGPT sign-in is missing or no longer valid. Run `dsh-chatgpt-siwc login` (or sign in from the harness settings) and try again.',
@@ -135,17 +141,30 @@ function mapUsage(u: ResponsesUsage): TokenUsage {
 }
 
 export class ChatGptSiwcAdapter extends LlmAdapter {
-  private readonly store: AccountsStore
-  private readonly apiBaseUrl: string
-  private readonly reasoningEffort?: string
+  private readonly storeSource: SiwcAdapterOptions['store']
+  private readonly baseUrlSource: () => string
+  private readonly effortSource: () => string | undefined
   private readonly fetchFn: typeof fetch
 
   constructor(options: SiwcAdapterOptions) {
     super()
-    this.store = options.store
-    this.apiBaseUrl = options.apiBaseUrl ?? API_BASE_URL
-    this.reasoningEffort = options.reasoningEffort
+    this.storeSource = options.store
+    this.baseUrlSource = () => {
+      const base = typeof options.apiBaseUrl === 'function' ? options.apiBaseUrl() : options.apiBaseUrl
+      return base === undefined || base.length === 0 ? API_BASE_URL : base
+    }
+    this.effortSource = () => {
+      const effort = typeof options.reasoningEffort === 'function'
+        ? options.reasoningEffort()
+        : options.reasoningEffort
+      return effort === undefined || effort.length === 0 ? undefined : effort
+    }
     this.fetchFn = options.fetchFn ?? fetch
+  }
+
+  /** The account store as currently configured (a live source resolves per call). */
+  private get store(): AccountsStore {
+    return typeof this.storeSource === 'function' ? this.storeSource() : this.storeSource
   }
 
   private overrides(): SiwcOverrides {
@@ -171,7 +190,7 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
     try {
       const { account, accessToken } = await ensureAccessToken(this.store, { overrides: this.overrides() })
       if (!planGranted(account)) return this.cachedModels(provider)
-      const models = await fetchModels(accessToken, { ...this.overrides(), apiBaseUrl: this.apiBaseUrl })
+      const models = await fetchModels(accessToken, { ...this.overrides(), apiBaseUrl: this.baseUrlSource() })
       await this.store.saveModels(account.client_id, models).catch(() => undefined)
       return models.map((m) => ({
         provider,
@@ -192,7 +211,7 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
       inputModalities: ['text'],
       reasoning: {
         efforts: EFFORTS.map((id) => ({ id: ReasoningEffortId(id), name: id })),
-        defaultEffort: this.reasoningEffort ? ReasoningEffortId(this.reasoningEffort) : undefined,
+        defaultEffort: this.effortSource() === undefined ? undefined : ReasoningEffortId(this.effortSource()!),
       },
     }
   }
@@ -238,12 +257,12 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
     }
 
     const body = serializeRequest(options, {
-      reasoningEffort: options.reasoningEffort ?? this.reasoningEffort,
+      reasoningEffort: options.reasoningEffort ?? this.effortSource(),
     })
 
     let response: Response
     try {
-      response = await this.fetchFn(`${this.apiBaseUrl}/responses`, {
+      response = await this.fetchFn(`${this.baseUrlSource()}/responses`, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${auth.accessToken}`,
@@ -317,6 +336,12 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
             st.callId = item.call_id ?? item.id
             st.name = item.name
             sawToolCall = true
+          } else if (item?.type === 'message') {
+            // Open the block at the item so a done-without-deltas item still
+            // backfills instead of being dropped.
+            stateFor(payload.output_index ?? 0, 'text')
+          } else if (item?.type === 'reasoning') {
+            stateFor(payload.output_index ?? 0, 'reasoning')
           }
           break
         }
@@ -339,9 +364,18 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
           break
         }
         case 'response.output_item.done': {
-          const st = blocks.get(payload.output_index ?? 0)
-          if (!st || st.ended) break
           const item = payload.item
+          let st = blocks.get(payload.output_index ?? 0)
+          if (st === undefined) {
+            // An item the deltas never opened: create its block from the
+            // item's own type, so a delta-less item still backfills instead
+            // of being dropped.
+            if (item?.type === 'reasoning') st = stateFor(payload.output_index ?? 0, 'reasoning')
+            else if (item?.type === 'function_call') st = stateFor(payload.output_index ?? 0, 'tool-call')
+            else if (item?.type === 'message') st = stateFor(payload.output_index ?? 0, 'text')
+            else break
+          }
+          if (st.ended) break
           // Backfill from the final item when deltas were not observed.
           if (item?.type === 'message' && !st.text) {
             st.text = (item.content ?? [])

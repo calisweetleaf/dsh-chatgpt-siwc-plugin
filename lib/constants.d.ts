@@ -46,3 +46,7 @@ export declare const PREFERRED_CALLBACK_PORT = 1455;
 export declare const MANAGE_USAGE_URL = "https://chatgpt.com/settings/usage";
 /** Access tokens in this flow live one hour; refresh this early. */
 export declare const REFRESH_SKEW_MS: number;
+/** Bound on any single OAuth control-plane fetch (discovery, token, JWKS, models). */
+export declare const HTTP_TIMEOUT_MS = 20000;
+/** How long the held loopback callback page may wait for the sign-in to settle. */
+export declare const CALLBACK_DEADLINE_MS = 120000;

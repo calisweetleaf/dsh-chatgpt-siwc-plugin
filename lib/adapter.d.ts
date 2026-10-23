@@ -24,22 +24,25 @@ import { LlmAdapter } from '@deepseek-ai/dsh-llm';
 import type { GenerateOptions, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm';
 import type { AccountsStore } from './store.ts';
 export interface SiwcAdapterOptions {
-    store: AccountsStore;
-    /** Public API base; defaults to the documented production base. */
-    apiBaseUrl?: string;
-    /** Reasoning effort materialized when a call names none. */
-    reasoningEffort?: string;
+    /** Account store holding SIWC registrations; a provider keeps it live with config. */
+    store: AccountsStore | (() => AccountsStore);
+    /** Public API base; a provider keeps it live. Defaults to the documented production base. */
+    apiBaseUrl?: string | (() => string | undefined);
+    /** Reasoning effort materialized when a call names none; a provider keeps it live. */
+    reasoningEffort?: string | (() => string | undefined);
     /** Test/embedding seam: override fetch. */
     fetchFn?: typeof fetch;
 }
 /** Display name of the one provider route this adapter serves. */
 export declare const PROVIDER_DISPLAY_NAME = "ChatGPT (Sign in with ChatGPT)";
 export declare class ChatGptSiwcAdapter extends LlmAdapter {
-    private readonly store;
-    private readonly apiBaseUrl;
-    private readonly reasoningEffort?;
+    private readonly storeSource;
+    private readonly baseUrlSource;
+    private readonly effortSource;
     private readonly fetchFn;
     constructor(options: SiwcAdapterOptions);
+    /** The account store as currently configured (a live source resolves per call). */
+    private get store();
     private overrides;
     providerInfo(provider: string): LlmProviderInfo;
     /** The signed-in account's cached catalog (offline-safe). */
