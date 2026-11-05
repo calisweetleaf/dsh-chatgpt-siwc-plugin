@@ -1,8 +1,18 @@
 import { defineConfig } from 'vitest/config'
+import ts from 'typescript'
 
-/** Only the authored test files run; editor journals under `.surgeon/` never do. */
 export default defineConfig({
-  test: {
-    include: ['tests/**/*.test.ts'],
-  },
+  plugins: [{
+    name: 'siwc-host-decorators',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.replaceAll('\\', '/').endsWith('/src/account-controller.ts')) return
+      // Match the distributed Host build: Node does not execute decorator syntax.
+      return { code: ts.transpileModule(code, { compilerOptions: {
+        target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
+        experimentalDecorators: false, sourceMap: true,
+      }, fileName: id }).outputText, map: null }
+    },
+  }],
+  test: { include: ['tests/**/*.test.ts'] },
 })

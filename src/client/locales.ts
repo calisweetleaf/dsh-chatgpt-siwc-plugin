@@ -29,6 +29,7 @@ export const en = {
   signInTitle: 'Sign-in',
   signInBody: 'Sign-in is an interactive OAuth flow on this machine: run dsh-chatgpt-siwc login in a terminal, approve the plan-usage prompt, and the models appear in the harness picker.',
   manageUsage: 'Manage usage (ChatGPT settings)',
+  accountTitle: 'ChatGPT account', accountDescription: 'Connect your account to use its plan in this host.', connected: 'Connected', disconnected: 'Not connected', loading: 'Checking account…', planReady: 'Plan access ready', planMissing: 'Plan access not available', waitingForSignIn: 'Complete sign-in in the browser window.', openSignIn: 'Open sign-in page', cancelSignIn: 'Cancel sign-in', refresh: 'Refresh status', working: 'Working…', signIn: 'Sign in with ChatGPT', reauthorize: 'Reconnect account', signOut: 'Disconnect', signOutConfirmTitle: 'Disconnect this account?', signOutConfirmBody: 'This revokes the saved ChatGPT session on this Host.', keepConnected: 'Keep connected', tokenRefreshes: 'Current access expires',
 } as const
 
 /** Every key this card's dictionary carries. */
@@ -59,4 +60,5 @@ export const zh: Record<SiwcCardLocaleKey, string> = {
   signInTitle: '登录',
   signInBody: '登录是本机上的交互式 OAuth 流程：在终端运行 dsh-chatgpt-siwc login，在授权页同意套餐使用，之后模型会出现在 harness 选择器中。',
   manageUsage: '管理用量（ChatGPT 设置）',
+  accountTitle: 'ChatGPT 账户', accountDescription: '连接账户后即可在此主机使用套餐。', connected: '已连接', disconnected: '未连接', loading: '正在检查账户…', planReady: '套餐访问已就绪', planMissing: '套餐访问不可用', waitingForSignIn: '请在浏览器窗口完成登录。', openSignIn: '打开登录页面', cancelSignIn: '取消登录', refresh: '刷新状态', working: '处理中…', signIn: '使用 ChatGPT 登录', reauthorize: '重新连接账户', signOut: '断开连接', signOutConfirmTitle: '断开此账户？', signOutConfirmBody: '这会撤销此主机上保存的 ChatGPT 会话。', keepConnected: '保持连接', tokenRefreshes: '当前访问令牌到期时间',
 }

@@ -79,3 +79,6 @@ export { parseSseEvents } from './sse.ts';
 export type { SseEvent } from './sse.ts';
 export { describeSubscriptionError, isSubscriptionError, isUsageLimitError, SiwcError, } from './errors.ts';
 export { API_BASE_URL, DEFAULT_AGENT_NAME_HINT, ISSUER, MANAGE_USAGE_URL, PLAN_SCOPE, } from './constants.ts';
+export { SiwcAccountController } from './account-controller.ts';
+export type { SiwcAccountControllerOptions } from './account-controller.ts';
+export type { SiwcAccountIdentity, SiwcAccountAttempt, SiwcAccountStatus, SiwcSignInStart, SiwcSignOutResult } from './account-types.ts';

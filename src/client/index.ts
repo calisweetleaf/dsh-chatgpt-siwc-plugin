@@ -21,10 +21,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 // Type-only: the ctx.settingsScope Context merge.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type {} from '@deepseek-ai/dsh-typert-protocol'
 import { SiwcCard } from './card.tsx'
 import type { SiwcCardConfig } from './controller.ts'
 import { SiwcCardController } from './controller.ts'
 import { en, zh, type SiwcCardLocaleKey } from './locales.ts'
+import { SIWC_ACCOUNT_REMOTE } from './account-remote.ts'
+import { SiwcAccountController } from './account-controller.ts'
 import css from './card.css'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -38,7 +41,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export const NS = 'dsh-chatgpt-siwc'
 
 /** Services the card needs: slot registration, copy, and the settings scope. */
-export const inject = ['slots', 'locale', 'settingsScope']
+export const inject = ['slots', 'locale', 'settingsScope', 'remote']
 
 /** Id the Plugins page lists the card under. */
 const CARD_ID = 'dsh-chatgpt-siwc'
@@ -65,9 +68,11 @@ function ensureStyles(): void {
  */
 export function apply(ctx: ClientContext): void {
   ensureStyles()
+  const account = new SiwcAccountController(ctx)
+  ctx.effect(() => async () => { await account.dispose() })
   ctx.effect(() => ctx.locale.register(NS, { zh, en }))
   const t = ctx.locale.bind(NS)
-  const controller = new SiwcCardController(ctx.settingsScope.bind<SiwcCardConfig>({ namespace: NS }))
+  const controller = new SiwcCardController(ctx.settingsScope.bind<SiwcCardConfig>({ namespace: NS }), account)
   ctx.effect(() => () => { controller.dispose() })
 
   const describeFace = ctx.settingsScope.describe()

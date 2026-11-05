@@ -61,15 +61,17 @@ patch (`cordis.patch.yml`, referenced from `package.json` as
 `dsh.bundle.patch`) registers it with defaults:
 
 ```yaml
-plugins:
-  dsh-chatgpt-siwc:
-    provider: chatgpt            # route name (default)
-    agentNameHint: DeepSeek Harness
+- insert:
+    - id: chatgpt-siwc
+      name: dsh-chatgpt-siwc
+      config:
+        provider: chatgpt
+        agentNameHint: DeepSeek Harness
 ```
 
 Optional config keys: `apiBaseUrl` (public API base override),
 `reasoningEffort` (effort materialized when a call names none),
-`storePath` (accounts file override). While a settings service is
+`storePath` (accounts file override), `streamIdleTimeoutMs` (maximum time between incoming stream bytes, default 120000). While a settings service is
 mounted, the whole section is live-editable from the Plugins page: a
 committed change takes effect without a restart, and renaming `provider`
 re-registers the route atomically (a refused rename keeps the previous
@@ -90,6 +92,18 @@ with baseline platform modules as bare requires), which the harness
 client discovers from `package.json`'s `dsh.client` declaration. The
 card configures; it does not authenticate — sign-in stays in the terminal
 flow (`dsh-chatgpt-siwc login`), which the card says plainly.
+
+## Account panel
+
+The compatible Web host exposes sign-in, account status, reauthorization,
+cancellation, refresh and sign-out on the ChatGPT Plugins card. The account
+Remote returns identity and plan-access facts without token material. A
+blocked popup leaves an authorization link in the panel. The browser and
+host must be on the same machine for the loopback callback.
+
+This standalone package targets the published `0.1.6-alpha` host interfaces.
+The private native `0.2.2-rc.1` checkout uses a separate compatibility port
+for its current configuration and first-class tool-result message contracts.
 
 ## CLI
 

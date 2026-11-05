@@ -26,6 +26,7 @@ import type {
   DirectoryRegistrationHandle,
   LlmConfigurableProvider,
 } from '@deepseek-ai/dsh-llm'
+import { SiwcAccountController } from './account-controller.ts'
 import { ChatGptSiwcAdapter, PROVIDER_DISPLAY_NAME } from './adapter.ts'
 import { DEFAULT_AGENT_NAME_HINT } from './constants.ts'
 import { SiwcError } from './errors.ts'
@@ -206,6 +207,11 @@ export function apply(ctx: Context, config: PluginConfig = {}): void {
     }
   }))
 
+  ctx.inject(['typert'], (accountCtx) => {
+    const controller = new SiwcAccountController(accountCtx, { store, agentNameHint: () => current().agentNameHint })
+    accountCtx.effect(() => async () => { await controller.dispose() })
+  })
+
   // Settings section: while a settings service is mounted, the namespace is
   // served for the web card and every committed change re-judges the
   // registrations above; without one, the composition config stays authoritative.
@@ -280,3 +286,7 @@ export {
   MANAGE_USAGE_URL,
   PLAN_SCOPE,
 } from './constants.ts'
+
+export { SiwcAccountController } from './account-controller.ts'
+export type { SiwcAccountControllerOptions } from './account-controller.ts'
+export type { SiwcAccountIdentity, SiwcAccountAttempt, SiwcAccountStatus, SiwcSignInStart, SiwcSignOutResult } from './account-types.ts'

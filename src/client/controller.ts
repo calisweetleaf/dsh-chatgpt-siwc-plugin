@@ -6,6 +6,7 @@
  */
 
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   SiwcCardForm,
@@ -15,6 +16,7 @@ import {
   type SiwcCardShell,
   type SiwcFieldState,
 } from './card-form.ts'
+import type { SiwcAccountController, AccountFace, AccountState } from './account-controller.ts'
 
 /** The settings section this card edits — the server Config keys, one-to-one. */
 export interface SiwcCardConfig {
@@ -43,10 +45,11 @@ export interface SiwcCardState extends SiwcCardShell {
 }
 
 /** The registration-side face the card's slot entry injects. */
-export interface SiwcCardFace extends SiwcCardActions {
+export interface SiwcCardFace extends SiwcCardActions, AccountFace {
   hooks: {
     /** Card snapshot bound by the renderer as useSiwcCard. */
     siwcCard: SnapshotStore<SiwcCardState>
+    siwcAccount: AccountFace['hooks']['siwcAccount']
   }
 }
 
@@ -58,7 +61,7 @@ export class SiwcCardController {
   /**
    * @param scope - the bound settings scope for the plugin's namespace.
    */
-  constructor(scope: SettingsScope<SiwcCardConfig>) {
+  constructor(scope: SettingsScope<SiwcCardConfig>, private readonly account?: SiwcAccountController) {
     this.form = new SiwcCardForm<SiwcCardConfig>(scope, [
       textField('provider'),
       textField('agentNameHint'),
@@ -85,11 +88,18 @@ export class SiwcCardController {
    * @returns the card's snapshot and its form actions.
    */
   inject(): SiwcCardFace {
-    return { hooks: { siwcCard: this.store }, ...this.form.actions() }
+    const account = this.account?.inject()
+    const fallback = account ?? emptyAccountFace()
+    return { ...fallback, hooks: { siwcCard: this.store, siwcAccount: fallback.hooks.siwcAccount }, ...this.form.actions() }
   }
 
   /** Drop the form's projection listeners; the scope's own lifecycle is separate. */
   dispose(): void {
     this.form.dispose()
   }
+}
+
+function emptyAccountFace(): AccountFace {
+  const store = createSnapshotStore<AccountState>({ busy: false, loading: false, confirmSignOut: false })
+  return { hooks: { siwcAccount: store }, refresh() {}, signIn() {}, cancel() {}, requestSignOut() {}, cancelSignOut() {}, signOut() {} }
 }

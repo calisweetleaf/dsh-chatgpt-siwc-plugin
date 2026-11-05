@@ -33,8 +33,23 @@ type T = (key: SiwcCardLocaleKey) => string
 export function SiwcCard(props: SiwcCardProps) {
   const { t } = props
   const state = props.useSiwcCard(snapshot => snapshot)
+  const accountState = props.useSiwcAccount(snapshot => snapshot)
   if (props.view === 'summary') return <span>{t('summary')}</span>
-  return <SiwcConfigForm t={t} state={state} face={props} />
+  return <><SiwcConfigForm t={t} state={state} face={props} /><SiwcAccountPanel t={t} state={accountState} face={props} /></>
+}
+
+function SiwcAccountPanel({ t, state, face }: { t: T; state: import('./account-controller.ts').AccountState; face: SiwcCardProps }) {
+  const status = state.status
+  const pending = status?.attempt?.phase === 'waiting'
+  return <section className="siwc-account" aria-label={t('accountTitle')}>
+    <header><div><h3>{t('accountTitle')}</h3><p>{t('accountDescription')}</p></div><span className={status?.signedIn ? 'siwc-account-badge is-connected' : 'siwc-account-badge'}>{status?.signedIn ? t('connected') : t('disconnected')}</span></header>
+    {state.loading ? <p role="status">{t('loading')}</p> : null}
+    {status?.signedIn ? <div className="siwc-account-identity"><strong>{status.account?.name || status.account?.email || t('connected')}</strong>{status.account?.email && status.account.name ? <span>{status.account.email}</span> : null}<span>{status.account?.planGranted ? t('planReady') : t('planMissing')}</span></div> : null}
+    {pending ? <div className="siwc-account-pending"><p>{t('waitingForSignIn')}</p>{status?.attempt?.authorizationUrl ? <a href={status.attempt.authorizationUrl} target="_blank" rel="noreferrer">{t('openSignIn')}</a> : null}<button type="button" onClick={face.cancel} disabled={state.busy}>{t('cancelSignIn')}</button></div> : null}
+    {state.message ? <p role="alert" className="siwc-account-error">{state.message}</p> : null}
+    {state.confirmSignOut ? <div className="siwc-signout-confirm"><strong>{t('signOutConfirmTitle')}</strong><p>{t('signOutConfirmBody')}</p><button onClick={face.cancelSignOut}>{t('keepConnected')}</button><button onClick={face.signOut} disabled={state.busy}>{t('signOut')}</button></div> : null}
+    <footer>{status?.account?.accessTokenExpiresAt ? <span>{t('tokenRefreshes')} <time dateTime={status.account.accessTokenExpiresAt}>{new Date(status.account.accessTokenExpiresAt).toLocaleString()}</time></span> : null}<button type="button" onClick={face.refresh} disabled={state.loading || state.busy}>{t('refresh')}</button>{!pending && (!status?.signedIn || status.account) ? <button type="button" onClick={face.signIn} disabled={state.busy}>{state.busy ? t('working') : status?.signedIn ? t('reauthorize') : t('signIn')}</button> : null}{status?.signedIn && !state.confirmSignOut && !pending ? <button type="button" onClick={face.requestSignOut} disabled={state.busy}>{t('signOut')}</button> : null}</footer>
+  </section>
 }
 
 /** The staged form: read-only notice, fields, sign-in note, and the save. */
