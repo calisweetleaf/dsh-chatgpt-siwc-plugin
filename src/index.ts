@@ -55,6 +55,8 @@ export interface PluginConfig {
   reasoningEffort?: string
   /** Accounts file override; default is the Harness home location. */
   storePath?: string
+  /** Maximum time between incoming provider bytes (default 120 seconds). */
+  streamIdleTimeoutMs?: number
 }
 
 /** The same keys after schema resolution: the two defaults are always present. */
@@ -64,6 +66,8 @@ export interface ResolvedConfig {
   apiBaseUrl?: string
   reasoningEffort?: string
   storePath?: string
+  /** Maximum time between incoming provider bytes (default 120 seconds). */
+  streamIdleTimeoutMs?: number
 }
 
 /** Fill the schema defaults so a partial composition config resolves like the schema does. */
@@ -76,6 +80,7 @@ function resolveConfig(config: PluginConfig): ResolvedConfig {
     ...config.apiBaseUrl === undefined ? {} : { apiBaseUrl: config.apiBaseUrl },
     ...config.reasoningEffort === undefined ? {} : { reasoningEffort: config.reasoningEffort },
     ...config.storePath === undefined ? {} : { storePath: config.storePath },
+    ...config.streamIdleTimeoutMs === undefined ? {} : { streamIdleTimeoutMs: config.streamIdleTimeoutMs },
   }
 }
 
@@ -85,15 +90,38 @@ export const Config = Schema.object({
   apiBaseUrl: Schema.string(),
   reasoningEffort: Schema.string(),
   storePath: Schema.string(),
+  streamIdleTimeoutMs: Schema.number(),
 })
 
+/** Validate composition and saved settings before credentials or routes are used. */
+function validateConfig(value: ResolvedConfig): void {
+  if (value.provider.trim().length === 0) throw new SiwcError('provider route name must not be empty', 'INVALID_CONFIG')
+  if (value.agentNameHint.trim().length === 0) throw new SiwcError('app name must not be empty', 'INVALID_CONFIG')
+  if (value.reasoningEffort !== undefined && !Object.hasOwn(EFFORT_MAP, value.reasoningEffort)) {
+    throw new SiwcError(`unsupported reasoning effort "${value.reasoningEffort}"`, 'INVALID_CONFIG')
+  }
+  if (value.streamIdleTimeoutMs !== undefined && (!Number.isSafeInteger(value.streamIdleTimeoutMs) || value.streamIdleTimeoutMs <= 0)) {
+    throw new SiwcError('stream idle timeout must be a positive integer in milliseconds', 'INVALID_CONFIG')
+  }
+  if (value.apiBaseUrl !== undefined && value.apiBaseUrl.length > 0) {
+    let url: URL
+    try { url = new URL(value.apiBaseUrl) } catch { throw new SiwcError('API base URL must be an absolute HTTPS URL', 'INVALID_CONFIG') }
+    const loopback = ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname)
+    if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) || url.username || url.password || url.search || url.hash) {
+      throw new SiwcError('API base URL requires HTTPS (HTTP is allowed only on loopback), without credentials, query, or fragment', 'INVALID_CONFIG')
+    }
+  }
+}
+
 export function apply(ctx: Context, config: PluginConfig = {}): void {
+  validateConfig(resolveConfig(config))
   let current: () => ResolvedConfig = () => resolveConfig(config)
   const store = (): AccountsStore => new AccountsStore(current().storePath)
   const adapter = new ChatGptSiwcAdapter({
     store: () => store(),
     apiBaseUrl: () => current().apiBaseUrl,
     reasoningEffort: () => current().reasoningEffort,
+    streamIdleTimeoutMs: () => current().streamIdleTimeoutMs,
   })
 
   // Route and directory registration: one route, swapped atomically when a
@@ -118,14 +146,32 @@ export function apply(ctx: Context, config: PluginConfig = {}): void {
     const { provider } = current()
     if (adapterRegistration === undefined) {
       adapterRegistration = ctx.llm.registerAdapter([provider], adapter)
-      directoryRegistration = ctx.llm.registerConfigurableProviders([directoryEntry(provider)])
+      try {
+        directoryRegistration = ctx.llm.registerConfigurableProviders([directoryEntry(provider)])
+      } catch (error) {
+        adapterRegistration()
+        adapterRegistration = undefined
+        throw error
+      }
     } else if (provider !== registeredProvider) {
       try {
         adapterRegistration.replace([provider])
-        directoryRegistration?.replace([directoryEntry(provider)])
+        try {
+          directoryRegistration?.replace([directoryEntry(provider)])
+        } catch (error) {
+          try { adapterRegistration.replace([registeredProvider!]) } catch (rollbackError) {
+            directoryRegistration?.()
+            adapterRegistration()
+            directoryRegistration = undefined
+            adapterRegistration = undefined
+            registeredProvider = undefined
+            throw new SiwcError('provider rename and rollback failed; the inconsistent route was removed. Save a valid provider route to restore it.', 'REGISTRATION_ROLLBACK_FAILED', { cause: rollbackError })
+          }
+          throw error
+        }
       } catch (error) {
         if (!contain) throw error
-        ctx.logger.error('dsh-chatgpt-siwc: keeping the previously registered route after a refused settings change')
+        ctx.logger.error(adapterRegistration === undefined ? 'dsh-chatgpt-siwc: route removed after rollback failure' : 'dsh-chatgpt-siwc: keeping previously registered route after refused settings change')
         ctx.logger.error(error)
         return
       }
@@ -146,15 +192,16 @@ export function apply(ctx: Context, config: PluginConfig = {}): void {
   ctx.effect(() => ctx.llm.registerModelDiscovery(SETTINGS_NS, async (_request, signal) => {
     if (signal?.aborted) return []
     const { apiBaseUrl } = current()
+    const accountStore = store()
     const toEntry = (m: { slug: string; displayName: string }) => ({ id: m.slug, name: m.displayName })
     try {
-      const { account, accessToken } = await ensureAccessToken(store())
+      const { account, accessToken } = await ensureAccessToken(accountStore)
       if (!planGranted(account)) return (account.models ?? []).map(toEntry)
       const models = await fetchModels(accessToken, { apiBaseUrl, signal })
-      await store().saveModels(account.client_id, models).catch(() => undefined)
+      await accountStore.saveModels(account.client_id, models).catch(() => undefined)
       return models.map(toEntry)
     } catch {
-      const active = await store().active().catch(() => undefined)
+      const active = await accountStore.active().catch(() => undefined)
       return (active?.models ?? []).map(toEntry)
     }
   }))
@@ -164,14 +211,7 @@ export function apply(ctx: Context, config: PluginConfig = {}): void {
   // registrations above; without one, the composition config stays authoritative.
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.installSection(ctx, SETTINGS_NS, Config, resolveConfig(config), {
-      validate: (value) => {
-        if (value.provider.trim().length === 0) {
-          throw new SiwcError('provider route name must not be empty', 'INVALID_CONFIG')
-        }
-        if (value.reasoningEffort !== undefined && !(value.reasoningEffort in EFFORT_MAP)) {
-          throw new SiwcError(`unsupported reasoning effort "${value.reasoningEffort}"`, 'INVALID_CONFIG')
-        }
-      },
+      validate: (value) => { validateConfig(value) },
       setSource: (source) => {
         current = () => resolveConfig(source())
       },

@@ -30,6 +30,8 @@ export interface SiwcAdapterOptions {
     apiBaseUrl?: string | (() => string | undefined);
     /** Reasoning effort materialized when a call names none; a provider keeps it live. */
     reasoningEffort?: string | (() => string | undefined);
+    /** Maximum silence between stream bytes. Defaults to two minutes. */
+    streamIdleTimeoutMs?: number | (() => number | undefined);
     /** Test/embedding seam: override fetch. */
     fetchFn?: typeof fetch;
 }
@@ -39,6 +41,7 @@ export declare class ChatGptSiwcAdapter extends LlmAdapter {
     private readonly storeSource;
     private readonly baseUrlSource;
     private readonly effortSource;
+    private readonly streamIdleTimeoutSource;
     private readonly fetchFn;
     constructor(options: SiwcAdapterOptions);
     /** The account store as currently configured (a live source resolves per call). */

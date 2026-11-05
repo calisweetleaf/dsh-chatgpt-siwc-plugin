@@ -129,6 +129,24 @@ describe('apply', () => {
     expect(() => { hooks.validate({ provider: 'chatgpt', agentNameHint: 'x', reasoningEffort: 'high' }) }).not.toThrow()
   })
 
+  it('rolls back the adapter when the directory refuses a rename', () => {
+    const mock = mockContext()
+    apply(mock.ctx as never, storeConfig())
+    mock.injected['settings'](mock.ctx)
+    mock.replaceDirectory.mockImplementationOnce(() => { throw new Error('directory collision') })
+    mock.captured.hooks!.setSource(() => ({ provider: 'renamed', agentNameHint: 'DeepSeek Harness' }))
+    mock.captured.hooks!.onChange()
+    expect(mock.replaceAdapter.mock.calls).toEqual([[['renamed']], [['chatgpt']]])
+  })
+
+  it('rejects invalid composition before registering credentials or routes', () => {
+    for (const config of [{ provider: ' ' }, { agentNameHint: ' ' }, { reasoningEffort: 'mega' }, { apiBaseUrl: 'http://example.com/v1' }, { apiBaseUrl: 'https://user:secret@example.com/v1' }, { apiBaseUrl: 'https://example.com/v1?token=secret' }]) {
+      const mock = mockContext()
+      expect(() => apply(mock.ctx as never, config)).toThrow()
+      expect(mock.registerAdapter).not.toHaveBeenCalled()
+    }
+  })
+
   it('serves model discovery from the store, honoring cancellation', async () => {
     const mock = mockContext()
     apply(mock.ctx as never, storeConfig())

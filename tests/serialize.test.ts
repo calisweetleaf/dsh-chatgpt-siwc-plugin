@@ -94,6 +94,11 @@ describe('serializeRequest', () => {
       .toThrow(/unsupported reasoning effort "ultra"/u)
   })
 
+  it('rejects inherited object keys as reasoning efforts', () => {
+    expect(() => serializeRequest({ ...baseOptions, reasoningEffort: ReasoningEffortId('toString') }))
+      .toThrow(/unsupported reasoning effort "toString"/u)
+  })
+
   it('replays assistant text as an output message and tool calls as function calls', () => {
     const assistant = assistantMessage([
       { type: 'text', text: 'calling' },
@@ -103,6 +108,23 @@ describe('serializeRequest', () => {
     expect(body.input).toEqual([
       { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'calling' }] },
       { type: 'function_call', call_id: 'tc-1', name: 'ping', arguments: '{"a":1}' },
+    ])
+  })
+
+  it('preserves assistant text and call order when replaying multiple segments', () => {
+    const assistant = assistantMessage([
+      { type: 'text', text: 'before ' },
+      { type: 'tool-call', id: ToolCallId('tc-1'), name: 'one', arguments: '{}' },
+      { type: 'text', text: 'between ' },
+      { type: 'tool-call', id: ToolCallId('tc-2'), name: 'two', arguments: '{}' },
+      { type: 'text', text: 'after' },
+    ])
+    expect(serializeRequest({ ...baseOptions, messages: [assistant] }).input).toEqual([
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'before ' }] },
+      { type: 'function_call', call_id: 'tc-1', name: 'one', arguments: '{}' },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'between ' }] },
+      { type: 'function_call', call_id: 'tc-2', name: 'two', arguments: '{}' },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'after' }] },
     ])
   })
 
@@ -116,6 +138,24 @@ describe('serializeRequest', () => {
     const body = serializeRequest({ ...baseOptions, messages: [result] })
     expect(body.input).toEqual([
       { type: 'function_call_output', call_id: 'tc-1', output: 'pong' },
+    ])
+  })
+
+  it('preserves user text/tool-result order and empty tool output', () => {
+    const result: Message = {
+      id: MessageId('test-user-3'),
+      role: 'user',
+      content: [
+        { type: 'text', text: 'before' },
+        { type: 'tool-result', toolCallId: ToolCallId('tc-1'), content: [] },
+        { type: 'text', text: 'after' },
+      ],
+      source: { kind: 'tool', callId: ToolCallId('tc-1') },
+    }
+    expect(serializeRequest({ ...baseOptions, messages: [result] }).input).toEqual([
+      { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'before' }] },
+      { type: 'function_call_output', call_id: 'tc-1', output: '' },
+      { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'after' }] },
     ])
   })
 

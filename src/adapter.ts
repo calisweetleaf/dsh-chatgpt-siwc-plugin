@@ -36,7 +36,7 @@ import { describeSubscriptionError, isSubscriptionError, isUsageLimitError, Siwc
 import { ensureAccessToken, fetchModels } from './oauth.ts'
 import type { SiwcOverrides } from './oauth.ts'
 import { serializeRequest } from './serialize.ts'
-import { parseSseEvents } from './sse.ts'
+import { parseSseEvents, SseIdleTimeoutError } from './sse.ts'
 import { planGranted } from './store.ts'
 import type { AccountsStore } from './store.ts'
 
@@ -47,6 +47,8 @@ export interface SiwcAdapterOptions {
   apiBaseUrl?: string | (() => string | undefined)
   /** Reasoning effort materialized when a call names none; a provider keeps it live. */
   reasoningEffort?: string | (() => string | undefined)
+  /** Maximum silence between stream bytes. Defaults to two minutes. */
+  streamIdleTimeoutMs?: number | (() => number | undefined)
   /** Test/embedding seam: override fetch. */
   fetchFn?: typeof fetch
 }
@@ -65,6 +67,7 @@ interface ResponsesUsage {
 }
 
 interface ResponsesEventPayload {
+  type?: string
   output_index?: number
   delta?: string
   item?: {
@@ -73,12 +76,14 @@ interface ResponsesEventPayload {
     id?: string
     name?: string
     arguments?: string
-    content?: { type?: string; text?: string }[]
+    content?: { type?: string; text?: string; refusal?: string }[]
     summary?: { type?: string; text?: string }[]
   }
   response?: {
     usage?: ResponsesUsage
     error?: { code?: string; message?: string }
+    incomplete_details?: { reason?: string }
+    output?: NonNullable<ResponsesEventPayload['item']>[]
   }
   code?: string
   message?: string
@@ -98,6 +103,9 @@ interface BlockState {
 /** Map any failure onto the harness error vocabulary. */
 function toLlmError(err: unknown): LlmError {
   if (err instanceof LlmError) return err
+  if (err instanceof SseIdleTimeoutError) {
+    return new LlmError(err.message, 'PROVIDER_ERROR', { cause: err })
+  }
   if (err instanceof SiwcError) {
     if (err.code === 'PLAN_NOT_GRANTED') {
       // The account is signed in but plan usage was not granted: an
@@ -144,6 +152,7 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
   private readonly storeSource: SiwcAdapterOptions['store']
   private readonly baseUrlSource: () => string
   private readonly effortSource: () => string | undefined
+  private readonly streamIdleTimeoutSource: () => number
   private readonly fetchFn: typeof fetch
 
   constructor(options: SiwcAdapterOptions) {
@@ -158,6 +167,12 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
         ? options.reasoningEffort()
         : options.reasoningEffort
       return effort === undefined || effort.length === 0 ? undefined : effort
+    }
+    this.streamIdleTimeoutSource = () => {
+      const timeout = typeof options.streamIdleTimeoutMs === 'function'
+        ? options.streamIdleTimeoutMs()
+        : options.streamIdleTimeoutMs
+      return timeout === undefined ? 120_000 : timeout
     }
     this.fetchFn = options.fetchFn ?? fetch
   }
@@ -243,10 +258,22 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
   }
 
   async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    const finishAborted = (): StreamChunk => ({
+      type: 'finish',
+      reason: { kind: 'aborted', failure: { message: 'the call was aborted', code: 'ABORTED' } },
+    })
+    if (options.signal?.aborted) {
+      yield finishAborted()
+      return
+    }
     let auth: Awaited<ReturnType<typeof ensureAccessToken>>
     try {
       auth = await ensureAccessToken(this.store, { overrides: this.overrides() })
     } catch (err) {
+      if (options.signal?.aborted) {
+        yield finishAborted()
+        return
+      }
       throw toLlmError(err)
     }
     if (!planGranted(auth.account)) {
@@ -254,6 +281,10 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
         'this ChatGPT account is signed in, but plan usage was not granted for this app. Check the app\'s plan access and per-app cap in ChatGPT settings (Manage usage), then sign in again.',
         'AUTH',
       )
+    }
+    if (options.signal?.aborted) {
+      yield finishAborted()
+      return
     }
 
     const body = serializeRequest(options, {
@@ -273,6 +304,10 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
         signal: options.signal,
       })
     } catch (err) {
+      if (options.signal?.aborted) {
+        yield finishAborted()
+        return
+      }
       throw toLlmError(err)
     }
     if (!response.ok || !response.body) throw await this.admissionError(response)
@@ -290,23 +325,75 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
       return st
     }
 
-    for await (const { event, data } of parseSseEvents(response.body)) {
-      if (options.signal?.aborted) {
-        yield {
-          type: 'finish',
-          reason: { kind: 'aborted', failure: { message: 'the call was aborted', code: 'ABORTED' } },
-        }
-        return
+    const finalizeBlock = (st: BlockState, item?: NonNullable<ResponsesEventPayload['item']>): StreamChunk[] => {
+      if (st.ended) return []
+      if (item?.type === 'message') {
+        const fullText = (item.content ?? [])
+          .filter(part => part.type === 'output_text' || part.type === 'refusal')
+          .map(part => part.type === 'refusal' ? part.refusal ?? '' : part.text ?? '')
+          .join('')
+        if (!st.text || (fullText.startsWith(st.text) && fullText.length > st.text.length)) st.text = fullText
       }
-      let payload: ResponsesEventPayload
-      try {
-        payload = JSON.parse(data) as ResponsesEventPayload
-      } catch {
-        continue
+      if (item?.type === 'reasoning') {
+        const fullText = (item.summary ?? []).map(part => part.text ?? '').join('')
+        if (!st.text || (fullText.startsWith(st.text) && fullText.length > st.text.length)) st.text = fullText
       }
+      if (item?.type === 'function_call') {
+        st.callId = item.call_id ?? st.callId
+        st.name = item.name ?? st.name
+        const fullArgs = item.arguments ?? ''
+        if (!st.args || (fullArgs.startsWith(st.args) && fullArgs.length > st.args.length)) st.args = fullArgs
+        sawToolCall = true
+      }
+      if (st.kind === 'tool-call' && (!st.callId || !st.name)) {
+        throw providerError('MALFORMED_TOOL_CALL', 'the provider returned a function call without its call_id or name')
+      }
+      const chunks: StreamChunk[] = []
+      if (!st.started) chunks.push({ type: 'block-start', index: st.index, blockType: st.kind })
+      st.started = true
+      st.ended = true
+      const block: ContentBlock = st.kind === 'text'
+        ? { type: 'text', text: st.text }
+        : st.kind === 'reasoning'
+          ? { type: 'reasoning', text: st.text }
+          : { type: 'tool-call', id: ToolCallId(st.callId ?? ''), name: st.name ?? '', arguments: st.args }
+      chunks.push({ type: 'block-end', index: st.index, block })
+      return chunks
+    }
 
-      switch (event) {
+    try {
+      for await (const { event: sseEvent, data } of parseSseEvents(
+        response.body,
+        undefined,
+        options.signal,
+        this.streamIdleTimeoutSource(),
+      )) {
+        if (options.signal?.aborted) {
+          yield finishAborted()
+          return
+        }
+        let payload: ResponsesEventPayload
+        try {
+          payload = JSON.parse(data) as ResponsesEventPayload
+        } catch {
+          continue
+        }
+        if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) continue
+        const event = !sseEvent || sseEvent === 'message' ? payload.type || '' : sseEvent
+
+        switch (event) {
         case 'response.output_text.delta': {
+          const st = stateFor(payload.output_index ?? 0, 'text')
+          if (!st.started) {
+            st.started = true
+            yield { type: 'block-start', index: st.index, blockType: 'text' }
+          }
+          const delta = payload.delta ?? ''
+          st.text += delta
+          if (delta) yield { type: 'text-delta', index: st.index, text: delta }
+          break
+        }
+        case 'response.refusal.delta': {
           const st = stateFor(payload.output_index ?? 0, 'text')
           if (!st.started) {
             st.started = true
@@ -333,7 +420,7 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
           const item = payload.item
           if (item?.type === 'function_call') {
             const st = stateFor(payload.output_index ?? 0, 'tool-call')
-            st.callId = item.call_id ?? item.id
+            st.callId = item.call_id
             st.name = item.name
             sawToolCall = true
           } else if (item?.type === 'message') {
@@ -375,43 +462,48 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
             else if (item?.type === 'message') st = stateFor(payload.output_index ?? 0, 'text')
             else break
           }
-          if (st.ended) break
-          // Backfill from the final item when deltas were not observed.
-          if (item?.type === 'message' && !st.text) {
-            st.text = (item.content ?? [])
-              .filter((part) => part.type === 'output_text')
-              .map((part) => part.text ?? '')
-              .join('')
-          }
-          if (item?.type === 'reasoning' && !st.text) {
-            st.text = (item.summary ?? []).map((part) => part.text ?? '').join('')
-          }
-          if (item?.type === 'function_call') {
-            st.callId = st.callId ?? item.call_id ?? item.id
-            st.name = st.name ?? item.name
-            if (!st.args && item.arguments) st.args = item.arguments
-            sawToolCall = true
-          }
-          if (!st.started) {
-            st.started = true
-            yield { type: 'block-start', index: st.index, blockType: st.kind }
-          }
-          st.ended = true
-          const block: ContentBlock =
-            st.kind === 'text'
-              ? { type: 'text', text: st.text }
-              : st.kind === 'reasoning'
-                ? { type: 'reasoning', text: st.text }
-                : { type: 'tool-call', id: ToolCallId(st.callId ?? ''), name: st.name ?? '', arguments: st.args }
-          yield { type: 'block-end', index: st.index, block }
+          for (const chunk of finalizeBlock(st, item)) yield chunk
           break
         }
         case 'response.completed': {
+          for (const [outputIndex, item] of (payload.response?.output ?? []).entries()) {
+            const kind = item.type === 'message' ? 'text' : item.type === 'reasoning' ? 'reasoning' : item.type === 'function_call' ? 'tool-call' : undefined
+            if (!kind) continue
+            const st = blocks.get(outputIndex) ?? stateFor(outputIndex, kind)
+            for (const chunk of finalizeBlock(st, item)) yield chunk
+          }
+          for (const st of blocks.values()) {
+            for (const chunk of finalizeBlock(st)) yield chunk
+          }
           if (payload.response?.usage) {
             yield { type: 'usage', usage: mapUsage(payload.response.usage) }
           }
           yield { type: 'finish', reason: { kind: sawToolCall ? 'tool-calls' : 'stop' } }
           return
+        }
+        case 'response.incomplete': {
+          for (const [outputIndex, item] of (payload.response?.output ?? []).entries()) {
+            const kind = item.type === 'message' ? 'text' : item.type === 'reasoning' ? 'reasoning' : item.type === 'function_call' ? 'tool-call' : undefined
+            if (!kind) continue
+            const st = blocks.get(outputIndex) ?? stateFor(outputIndex, kind)
+            for (const chunk of finalizeBlock(st, item)) yield chunk
+          }
+          for (const st of blocks.values()) {
+            for (const chunk of finalizeBlock(st)) yield chunk
+          }
+          if (payload.response?.usage) yield { type: 'usage', usage: mapUsage(payload.response.usage) }
+          if (payload.response?.incomplete_details?.reason === 'max_output_tokens') {
+            yield { type: 'finish', reason: { kind: 'max-tokens' } }
+            return
+          }
+          throw providerError('INCOMPLETE', `the response was incomplete (${payload.response?.incomplete_details?.reason ?? 'unknown reason'})`)
+        }
+        case 'response.cancelled': {
+          if (options.signal?.aborted) {
+            yield finishAborted()
+            return
+          }
+          throw providerError('RESPONSE_CANCELLED', 'the provider cancelled the response')
         }
         case 'response.failed': {
           const err = payload.response?.error
@@ -422,7 +514,15 @@ export class ChatGptSiwcAdapter extends LlmAdapter {
         }
         default:
           break
+        }
       }
+    } catch (err) {
+      throw toLlmError(err)
+    }
+
+    if (options.signal?.aborted) {
+      yield finishAborted()
+      return
     }
 
     throw new LlmError('the Responses stream ended without a terminal event', 'PROVIDER_ERROR')

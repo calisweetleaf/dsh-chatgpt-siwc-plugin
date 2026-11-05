@@ -60,6 +60,7 @@ describe('ChatGptSiwcAdapter stream translation', () => {
       { type: 'block-start', index: 0, blockType: 'text' },
       { type: 'text-delta', index: 0, text: 'Hel' },
       { type: 'text-delta', index: 0, text: 'lo' },
+      { type: 'block-end', index: 0, block: { type: 'text', text: 'Hello' } },
       {
         type: 'usage',
         usage: {
@@ -114,6 +115,16 @@ describe('ChatGptSiwcAdapter stream translation', () => {
     ])
   })
 
+  it('rejects a malformed tool call instead of emitting an empty call id', async () => {
+    const frames = [
+      sse('response.function_call_arguments.delta', { output_index: 0, delta: '{}' }),
+      sse('response.completed', {}),
+    ]
+    const adapter = await adapterWith(async () => sseResponse(frames))
+    await expect(collect(adapter.stream({ provider: 'chatgpt', model: 'gpt-test', messages: [] })))
+      .rejects.toMatchObject({ code: 'MALFORMED_TOOL_CALL' })
+  })
+
   it('backfills a message block the deltas never observed', async () => {
     const frames = [
       sse('response.output_item.done', { output_index: 0, item: { type: 'message', content: [{ type: 'output_text', text: 'Hello' }] } }),
@@ -126,6 +137,52 @@ describe('ChatGptSiwcAdapter stream translation', () => {
       { type: 'block-end', index: 0, block: { type: 'text', text: 'Hello' } },
       { type: 'finish', reason: { kind: 'stop' } },
     ])
+  })
+
+  it('translates refusal deltas and reconciles the final refusal content', async () => {
+    const frames = [
+      sse('response.refusal.delta', { output_index: 0, delta: 'I cannot help with that.' }),
+      sse('response.completed', {
+        response: {
+          output: [{ type: 'message', content: [{ type: 'refusal', refusal: 'I cannot help with that.' }] }],
+        },
+      }),
+    ]
+    const adapter = await adapterWith(async () => sseResponse(frames))
+    const chunks = await collect(adapter.stream({ provider: 'chatgpt', model: 'gpt-test', messages: [] }))
+    expect(chunks).toEqual([
+      { type: 'block-start', index: 0, blockType: 'text' },
+      { type: 'text-delta', index: 0, text: 'I cannot help with that.' },
+      { type: 'block-end', index: 0, block: { type: 'text', text: 'I cannot help with that.' } },
+      { type: 'finish', reason: { kind: 'stop' } },
+    ])
+  })
+
+  it('uses the payload type for default message frames and ignores null JSON safely', async () => {
+    const frames = [
+      `data: null\n\n`,
+      `data: ${JSON.stringify({ type: 'response.completed' })}\n\n`,
+    ]
+    const adapter = await adapterWith(async () => sseResponse(frames))
+    await expect(collect(adapter.stream({ provider: 'chatgpt', model: 'gpt-test', messages: [] })))
+      .resolves.toEqual([{ type: 'finish', reason: { kind: 'stop' } }])
+  })
+
+  it('cancels a still-open transport after receiving a terminal event', async () => {
+    let cancelled = false
+    const encoder = new TextEncoder()
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(sse('response.completed', {})))
+      },
+      cancel() { cancelled = true },
+    })
+    const adapter = new ChatGptSiwcAdapter({
+      store: await signedInStore(),
+      fetchFn: async () => new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+    })
+    await collect(adapter.stream({ provider: 'chatgpt', model: 'gpt-test', messages: [] }))
+    expect(cancelled).toBe(true)
   })
 
   it('maps a mid-stream plan-usage failure to the plain-language usage-limit error', async () => {
@@ -153,6 +210,18 @@ describe('ChatGptSiwcAdapter stream translation', () => {
     const adapter = await adapterWith(async () => sseResponse(frames))
     await expect(collect(adapter.stream({ provider: 'chatgpt', model: 'gpt-test', messages: [] })))
       .rejects.toMatchObject({ code: 'PROVIDER_ERROR', message: expect.stringContaining('ended without a terminal event') })
+  })
+
+  it('maps transport read failures to provider errors', async () => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) { controller.error(new Error('socket reset')) },
+    })
+    const adapter = new ChatGptSiwcAdapter({
+      store: await signedInStore(),
+      fetchFn: async () => new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+    })
+    await expect(collect(adapter.stream({ provider: 'chatgpt', model: 'gpt-test', messages: [] })))
+      .rejects.toMatchObject({ code: 'PROVIDER_ERROR', message: 'socket reset' })
   })
 
   it('finishes as aborted once the caller aborts mid-stream', async () => {

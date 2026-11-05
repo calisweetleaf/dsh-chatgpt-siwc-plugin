@@ -37,6 +37,8 @@ export interface PluginConfig {
     reasoningEffort?: string;
     /** Accounts file override; default is the Harness home location. */
     storePath?: string;
+    /** Maximum time between incoming provider bytes (default 120 seconds). */
+    streamIdleTimeoutMs?: number;
 }
 /** The same keys after schema resolution: the two defaults are always present. */
 export interface ResolvedConfig {
@@ -45,6 +47,8 @@ export interface ResolvedConfig {
     apiBaseUrl?: string;
     reasoningEffort?: string;
     storePath?: string;
+    /** Maximum time between incoming provider bytes (default 120 seconds). */
+    streamIdleTimeoutMs?: number;
 }
 export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     provider: Schema<string, string, "defined">;
@@ -52,12 +56,14 @@ export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     apiBaseUrl: Schema<string, string, "plain">;
     reasoningEffort: Schema<string, string, "plain">;
     storePath: Schema<string, string, "plain">;
+    streamIdleTimeoutMs: Schema<number, number, "plain">;
 }>>, Schemastery.ObjectT<NoInfer<{
     provider: Schema<string, string, "defined">;
     agentNameHint: Schema<string, string, "defined">;
     apiBaseUrl: Schema<string, string, "plain">;
     reasoningEffort: Schema<string, string, "plain">;
     storePath: Schema<string, string, "plain">;
+    streamIdleTimeoutMs: Schema<number, number, "plain">;
 }>>, "plain">;
 export declare function apply(ctx: Context, config?: PluginConfig): void;
 export { ChatGptSiwcAdapter, PROVIDER_DISPLAY_NAME } from './adapter.ts';

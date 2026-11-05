@@ -1,11 +1,7 @@
-# Bundle patch for the DeepSeek Harness: registers the dsh-chatgpt-siwc
-# plugin with its default config. Referenced from package.json as
-# `dsh.bundle.patch`; the harness bundler merges this fragment into the
-# app config at build time. Delete the plugin block (or set a different
-# `provider` route) to reconfigure.
-plugins:
-  dsh-chatgpt-siwc:
-    # Provider route harness configs select this provider by.
-    provider: chatgpt
-    # App name shown on the first Sign in with ChatGPT consent screen.
-    agentNameHint: DeepSeek Harness
+# Harness bundle insertion for the SIWC provider.
+- insert:
+    - id: chatgpt-siwc
+      name: dsh-chatgpt-siwc
+      config:
+        provider: chatgpt
+        agentNameHint: DeepSeek Harness

@@ -59,6 +59,13 @@ describe('verifyIdToken', () => {
       .rejects.toMatchObject({ code: 'INVALID_ID_TOKEN', message: expect.stringContaining('azp') })
   })
 
+  it('requires an authorized party for multiple audiences', async () => {
+    await expect(verify({ token: harness.signToken({ ...claims, aud: ['oaiapp_test', 'other-app'] }), fetchFn: serveJwks })).rejects.toMatchObject({ code: 'INVALID_ID_TOKEN', message: expect.stringContaining('azp') })
+  })
+  it('rejects a token before its not-before time', async () => {
+    await expect(verify({ token: harness.signToken({ ...claims, nbf: Math.floor(Date.now() / 1000) + 60 }), fetchFn: serveJwks })).rejects.toMatchObject({ code: 'INVALID_ID_TOKEN', message: expect.stringContaining('not yet valid') })
+  })
+
   it('rejects a tampered signature', async () => {
     const token = harness.signToken(claims)
     const parts = token.split('.')
