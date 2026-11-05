@@ -147,8 +147,8 @@ export function openUrlInBrowser(url: string, reporter?: LoginReporter): void {
     return
   }
   const command = process.platform === 'darwin' ? 'open'
-    : process.platform === 'win32' ? 'cmd' : 'xdg-open'
-  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url]
+    : process.platform === 'win32' ? 'rundll32.exe' : 'xdg-open'
+  const args = process.platform === 'win32' ? ['url.dll,FileProtocolHandler', url] : [url]
   try {
     const child = spawn(command, args, { stdio: 'ignore', detached: true })
     child.once('error', () => { /* manual URL already printed */ })
@@ -260,7 +260,11 @@ export async function login(options: LoginOptions): Promise<LoginResult> {
   const authorizeUrl = buildAuthorizeUrl({ endpoints, pending, hostId, agentNameHint: options.agentNameHint })
 
   reporter?.line('Sign in with ChatGPT: open this URL in your browser if it does not open automatically:')
-  reporter?.line(authorizeUrl)
+  // Reauthorization URLs can contain the stored ID token as an optional
+  // id_token_hint. Keep that credential in the browser handoff only.
+  const printableUrl = new URL(authorizeUrl)
+  printableUrl.searchParams.delete('id_token_hint')
+  reporter?.line(printableUrl.toString())
   if (options.openBrowser !== false) openUrlInBrowser(authorizeUrl, reporter)
 
   try {
@@ -318,7 +322,10 @@ export async function login(options: LoginOptions): Promise<LoginResult> {
         saved_at: new Date().toISOString(),
       }
       applyTokens(record, tokens as TokenSet)
-      if (record.scopes.length === 0 && granted.length > 0) record.scopes = granted.filter(s => s.length > 0)
+      if (tokens.scope === undefined && record.scopes.length === 0 && granted.length > 0) {
+        record.scopes = granted.filter(s => s.length > 0)
+      }
+      options.signal?.throwIfAborted()
       await store.saveSignIn(record)
       plan = planGranted(record)
       firstTime = existing === undefined && !(await store.welcomed().catch(() => false))
@@ -361,6 +368,7 @@ function startCallbackServer(pending: PendingAttempt, reporter?: LoginReporter):
     let settled = false
     let held: ServerResponse | undefined
     let deadline: NodeJS.Timeout | undefined
+    let arrivalDeadline: NodeJS.Timeout | undefined
     let resolveWait: (value: { code: string; clientId?: string; scope?: string }) => void
     let rejectWait: (error: Error) => void
     const waitPromise = new Promise<{ code: string; clientId?: string; scope?: string }>((res, rej) => {
@@ -375,6 +383,10 @@ function startCallbackServer(pending: PendingAttempt, reporter?: LoginReporter):
       if (deadline !== undefined) {
         clearTimeout(deadline)
         deadline = undefined
+      }
+      if (arrivalDeadline !== undefined) {
+        clearTimeout(arrivalDeadline)
+        arrivalDeadline = undefined
       }
       const response = held
       if (response === undefined) return
@@ -433,6 +445,10 @@ function startCallbackServer(pending: PendingAttempt, reporter?: LoginReporter):
       // code's arrival. login() finishes it (or the deadline below does), so a
       // completed sign-in never leaves the browser on a stale page.
       settled = true
+      if (arrivalDeadline !== undefined) {
+        clearTimeout(arrivalDeadline)
+        arrivalDeadline = undefined
+      }
       held = response
       deadline = setTimeout(() => {
         finish({ ok: false, message: 'The sign-in did not complete in time. Run the sign-in again.' })
@@ -455,22 +471,44 @@ function startCallbackServer(pending: PendingAttempt, reporter?: LoginReporter):
         rejectPromise(new SiwcError('loopback listener has no port', 'LISTENER_FAILED'))
         return
       }
+      arrivalDeadline = setTimeout(() => {
+        arrivalDeadline = undefined
+        if (!settled) {
+          settled = true
+          rejectWait(new SiwcError('sign-in callback did not arrive in time', 'CALLBACK_TIMEOUT'))
+        }
+      }, CALLBACK_DEADLINE_MS)
+      arrivalDeadline.unref()
       resolvePromise({
         port: address.port,
         wait: async (signal?: AbortSignal) => {
           if (signal !== undefined) {
             if (signal.aborted) throw new SiwcError('sign-in aborted', 'ABORTED')
-            signal.addEventListener('abort', () => {
+            const onAbort = (): void => {
               if (!settled) {
                 settled = true
+                if (arrivalDeadline !== undefined) {
+                  clearTimeout(arrivalDeadline)
+                  arrivalDeadline = undefined
+                }
                 rejectWait(new SiwcError('sign-in aborted', 'ABORTED'))
               }
-            }, { once: true })
+            }
+            signal.addEventListener('abort', onAbort, { once: true })
+            try {
+              return await waitPromise
+            } finally {
+              signal.removeEventListener('abort', onAbort)
+            }
           }
           return waitPromise
         },
         finish,
         close: () => {
+          if (arrivalDeadline !== undefined) {
+            clearTimeout(arrivalDeadline)
+            arrivalDeadline = undefined
+          }
           if (held !== undefined) {
             finish({ ok: false, message: 'The sign-in attempt ended. Run the sign-in again to retry.' })
           }

@@ -16,13 +16,12 @@
 
 import { DEFAULT_AGENT_NAME_HINT } from './constants.ts'
 import { SiwcError } from './errors.ts'
-import { ensureAccessToken, fetchModels, login, logout, openUrlInBrowser } from './oauth.ts'
+import { ensureAccessToken, fetchModels, login, logout } from './oauth.ts'
 import type { LoginReporter } from './oauth.ts'
 import { AccountsStore, isSignedIn, planGranted, publicView } from './store.ts'
 
 const reporter: LoginReporter = {
   line: (text) => console.log(text),
-  openUrl: (url) => openUrlInBrowser(url, reporter),
 }
 
 function flagValue(args: string[], flag: string): string | undefined {

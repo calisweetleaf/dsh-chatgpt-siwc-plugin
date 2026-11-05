@@ -147,20 +147,24 @@ export class AccountsStore {
    * same for every later sign-in from this installation.
    */
   async hostId(): Promise<string> {
-    try {
-      const parsed: unknown = JSON.parse(await readFile(this.hostPath, 'utf8'))
-      const id = (parsed as { ext_agent_host_id?: unknown }).ext_agent_host_id
-      if (typeof id === 'string' && id.startsWith('urn:uuid:')) return id
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException | null)?.code !== 'ENOENT') throw error
-    }
-    const id = `urn:uuid:${randomUUID()}`
     await this.ensureDir()
-    await writeFileAtomic(this.hostPath, `${JSON.stringify({ ext_agent_host_id: id }, null, 2)}\n`, {
-      mode: FILE_MODE,
-      dirMode: DIR_MODE,
+    // Serialize first creation across processes so concurrent sign-ins cannot
+    // advertise different ids for the same host file.
+    return withFileLock(this.hostPath, async () => {
+      try {
+        const parsed: unknown = JSON.parse(await readFile(this.hostPath, 'utf8'))
+        const id = (parsed as { ext_agent_host_id?: unknown }).ext_agent_host_id
+        if (typeof id === 'string' && id.startsWith('urn:uuid:')) return id
+      } catch (error: unknown) {
+        if ((error as NodeJS.ErrnoException | null)?.code !== 'ENOENT') throw error
+      }
+      const id = `urn:uuid:${randomUUID()}`
+      await writeFileAtomic(this.hostPath, `${JSON.stringify({ ext_agent_host_id: id }, null, 2)}\n`, {
+        mode: FILE_MODE,
+        dirMode: DIR_MODE,
+      })
+      return id
     })
-    return id
   }
 
   /** All account records (full records — callers must never log tokens). */
@@ -274,7 +278,8 @@ export function applyTokens(account: AccountRecord, tokens: TokenSet): void {
     ? undefined
     : Date.now() + tokens.expires_in * 1000
   const scopes = parseScopes(tokens.scope)
-  if (scopes.length > 0) account.scopes = scopes
+  // Omitted scope retains the prior grant; explicit empty scope clears it.
+  if (tokens.scope !== undefined) account.scopes = scopes
   account.saved_at = new Date().toISOString()
   if (account.issuer === undefined) account.issuer = ISSUER
 }

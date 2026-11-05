@@ -6,10 +6,10 @@
  */
 import { createHash } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
-import { FALLBACK_ENDPOINTS, ISSUER, RESOURCE } from '../src/constants.ts'
+import { CALLBACK_DEADLINE_MS, FALLBACK_ENDPOINTS, ISSUER, RESOURCE } from '../src/constants.ts'
 import { discoverEndpoints, fetchModels, login, logout, refreshAccount } from '../src/oauth.ts'
 import type { LoginReporter, SiwcEndpoints } from '../src/oauth.ts'
-import { AccountsStore, isSignedIn, planGranted } from '../src/store.ts'
+import { AccountsStore, applyTokens, isSignedIn, planGranted } from '../src/store.ts'
 import { createJwtHarness, jsonResponse } from './support.ts'
 import { accountRecord, tempStore } from './store-fixture.ts'
 
@@ -23,15 +23,17 @@ const ENDPOINTS: SiwcEndpoints = {
 }
 
 /** Capture the authorize URL login prints, so the test can act as the browser. */
-function urlCapture(): { url: Promise<URL>; reporter: LoginReporter } {
+function urlCapture(): { url: Promise<URL>; reporter: LoginReporter; lines: string[] } {
   let resolveUrl: (url: URL) => void
   const url = new Promise<URL>((resolve) => { resolveUrl = resolve })
+  const lines: string[] = []
   const reporter: LoginReporter = {
     line: (text: string) => {
+      lines.push(text)
       if (text.startsWith(ENDPOINTS.authorizationEndpoint)) resolveUrl(new URL(text))
     },
   }
-  return { url, reporter }
+  return { url, reporter, lines }
 }
 
 /** The faked OpenAI side: token, JWKS, and revocation endpoints. */
@@ -178,6 +180,36 @@ describe('login', () => {
     expect(second.page).not.toContain('per-app cap')
   })
 
+  it('does not print the stored ID token in the reauthorization URL', async () => {
+    const store = tempStore()
+    const provider = fakeProvider()
+    await runLogin(store, provider)
+    const stored = await store.account('oaiapp_issued')
+    expect(stored?.id_token).toBeDefined()
+
+    const capture = urlCapture()
+    const loginPromise = login({
+      store,
+      agentNameHint: 'Test Agent',
+      clientId: 'oaiapp_issued',
+      openBrowser: false,
+      reporter: capture.reporter,
+      overrides: { endpoints: ENDPOINTS, fetchFn: provider.fetchFn },
+    })
+    const authUrl = await capture.url
+    expect(capture.lines.join('\n')).not.toContain(stored!.id_token!)
+    expect(capture.lines.join('\n')).not.toContain('id_token_hint')
+    const settled = loginPromise.then(
+      () => ({ ok: true as const }),
+      (error) => ({ ok: false as const, error }),
+    )
+    const response = await fetch(
+      `${callbackUrlOf(authUrl)}?error=access_denied&state=${authUrl.searchParams.get('state')}`,
+    )
+    expect(response.status).toBe(400)
+    await expect(settled).resolves.toMatchObject({ ok: false, error: { code: 'AUTHORIZATION_FAILED' } })
+  })
+
   it('refuses a reauthorization whose identity does not match', async () => {
     const store = tempStore()
     const provider = fakeProvider()
@@ -203,6 +235,51 @@ describe('login', () => {
     expect(response.status).toBe(400)
     expect(await response.text()).toContain("Sign-in didn't complete")
     await loginRejection
+  })
+
+  it('times out when the browser never returns to the callback listener', async () => {
+    vi.useFakeTimers()
+    try {
+      const capture = urlCapture()
+      const loginPromise = login({
+        store: tempStore(),
+        agentNameHint: 'Test Agent',
+        openBrowser: false,
+        reporter: capture.reporter,
+        overrides: { endpoints: ENDPOINTS, fetchFn: vi.fn() },
+      })
+      await capture.url
+      const settled = loginPromise.then(
+        () => ({ ok: true as const }),
+        (error) => ({ ok: false as const, error }),
+      )
+      await vi.advanceTimersByTimeAsync(CALLBACK_DEADLINE_MS)
+      await expect(settled).resolves.toMatchObject({ ok: false, error: { code: 'CALLBACK_TIMEOUT' } })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('removes the caller abort listener after cancellation', async () => {
+    const capture = urlCapture()
+    const controller = new AbortController()
+    const removeListener = vi.spyOn(controller.signal, 'removeEventListener')
+    const loginPromise = login({
+      store: tempStore(),
+      agentNameHint: 'Test Agent',
+      openBrowser: false,
+      reporter: capture.reporter,
+      signal: controller.signal,
+      overrides: { endpoints: ENDPOINTS, fetchFn: vi.fn() },
+    })
+    await capture.url
+    const settled = loginPromise.then(
+      () => ({ ok: true as const }),
+      (error) => ({ ok: false as const, error }),
+    )
+    controller.abort()
+    await expect(settled).resolves.toMatchObject({ ok: false, error: { code: 'ABORTED' } })
+    expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function))
   })
 
   it('treats access_denied as plan usage not granted', async () => {
@@ -364,5 +441,23 @@ describe('fetchModels', () => {
       { slug: 'gpt-test', displayName: 'GPT Test' },
     ])
     expect(requests).toEqual(['https://plan.test/v1/models'])
+  })
+})
+
+describe('store scope updates', () => {
+  it('clears an explicitly empty grant and retains scopes when a refresh omits scope', () => {
+    const account = accountRecord({})
+    applyTokens(account, { access_token: 'at-2' })
+    expect(planGranted(account)).toBe(true)
+    applyTokens(account, { access_token: 'at-3', scope: '' })
+    expect(account.scopes).toEqual([])
+    expect(planGranted(account)).toBe(false)
+  })
+
+  it('creates one stable host id across concurrent first reads', async () => {
+    const store = tempStore()
+    const ids = await Promise.all(Array.from({ length: 8 }, () => store.hostId()))
+    expect(new Set(ids).size).toBe(1)
+    await expect(store.hostId()).resolves.toBe(ids[0])
   })
 })
