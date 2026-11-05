@@ -7,7 +7,7 @@ implemented. The private native Harness port targets a separate API generation.
 ## Verification
 
 Current restored-checkout gates: `npm run typecheck`, `npm test` (10 files,
-86 tests), `npm pack --dry-run` (68 package files), and `git diff --check` pass.
+88 tests), `npm pack --dry-run` (68 package files), and `git diff --check` pass.
 OAuth callback tests use a real loopback listener with fake authorization/token
 endpoints; account tests use temporary stores and injected lifecycle functions.
 No live account sign-in, revocation or inference was performed as a test.
@@ -38,3 +38,5 @@ The user explicitly authorizes frequent pushes to this repository's origin/main.
 Keep completed tested milestones remote. Native Harness changes remain private;
 its upstream origin is deepseek-ai rather than the user's repository. Preserve
 existing language-native systems and defer the lab until login is useful.
+
+Model discovery accepts both the subscription visibility catalog and the public API data-array catalog. Unknown top-level shapes raise a catalog error rather than quietly inventing an empty result.

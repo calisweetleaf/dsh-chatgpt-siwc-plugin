@@ -426,6 +426,13 @@ describe('discoverEndpoints', () => {
 })
 
 describe('fetchModels', () => {
+  it('accepts the standard public API catalog without losing model IDs', async () => {
+    await expect(fetchModels('at-1', { fetchFn: async () => jsonResponse({ data: [{ id: 'model-a' }, { id: 'model-b' }] }) })).resolves.toEqual([{ slug: 'model-a', displayName: 'model-a' }, { slug: 'model-b', displayName: 'model-b' }])
+  })
+  it('reports malformed catalogs instead of silently returning an empty picker', async () => {
+    await expect(fetchModels('at-1', { fetchFn: async () => jsonResponse({ unexpected: [] }) })).rejects.toMatchObject({ code: 'INVALID_MODEL_CATALOG' })
+  })
+
   it('maps the plan-token catalog, keeping only listed models', async () => {
     const requests: string[] = []
     const fetchFn: typeof fetch = async (input) => {

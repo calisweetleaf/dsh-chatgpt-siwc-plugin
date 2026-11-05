@@ -662,7 +662,7 @@ export interface CatalogModel {
 /**
  * The signed-in account's model catalog from `GET /v1/models` — this
  * flow's response is `{models: [{slug, display_name, visibility}]}`
- * (not the API-key `data[]` shape). Only `visibility: "list"` entries
+ * or the standard public API `data[]` shape. For the SIWC catalog, only `visibility: "list"` entries
  * belong in a picker; server order is preserved.
  */
 export async function fetchModels(
@@ -678,10 +678,20 @@ export async function fetchModels(
   if (!response.ok) {
     throw new SiwcError(`model catalog request failed (HTTP ${response.status})`, `HTTP_${response.status}`)
   }
-  const body = (await response.json()) as { models?: { slug?: string; display_name?: string; visibility?: string }[] }
-  return (body.models ?? [])
-    .filter(model => model.visibility === 'list' && typeof model.slug === 'string')
-    .map(model => ({ slug: model.slug!, displayName: model.display_name ?? model.slug! }))
+  const body: unknown = await response.json()
+  if (typeof body !== 'object' || body === null) throw new SiwcError('model catalog response is not an object', 'INVALID_MODEL_CATALOG')
+  const catalog = body as Record<string, unknown>
+  const rows = Array.isArray(catalog['models']) ? catalog['models'] : Array.isArray(catalog['data']) ? catalog['data'] : undefined
+  if (rows === undefined) throw new SiwcError('model catalog response contains neither models nor data', 'INVALID_MODEL_CATALOG')
+  const subscription = Array.isArray(catalog['models'])
+  return rows.flatMap((entry: unknown) => {
+    if (typeof entry !== 'object' || entry === null) return []
+    const model = entry as Record<string, unknown>
+    if (subscription && model['visibility'] !== 'list') return []
+    const slug = subscription ? model['slug'] : model['id']
+    if (typeof slug !== 'string' || slug.length === 0) return []
+    return [{ slug, displayName: typeof model['display_name'] === 'string' ? model['display_name'] : slug }]
+  })
 }
 
 export { PLAN_SCOPE }

@@ -140,7 +140,7 @@ export interface CatalogModel {
 /**
  * The signed-in account's model catalog from `GET /v1/models` — this
  * flow's response is `{models: [{slug, display_name, visibility}]}`
- * (not the API-key `data[]` shape). Only `visibility: "list"` entries
+ * or the standard public API `data[]` shape. For the SIWC catalog, only `visibility: "list"` entries
  * belong in a picker; server order is preserved.
  */
 export declare function fetchModels(accessToken: string, overrides?: SiwcOverrides & {
